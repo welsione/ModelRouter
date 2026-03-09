@@ -225,16 +225,21 @@ app.get('/api/config/models/:id/stats', (req, res) => {
   const modelLogs = allLogs.filter(l => l.selectedModelId === req.params.id);
   
   const byStrategy = {};
+  let totalTokensFromLogs = 0;
+  let totalLatency = 0;
   modelLogs.forEach(log => {
     const strategyId = log.strategyId || 'unknown';
     byStrategy[strategyId] = (byStrategy[strategyId] || 0) + 1;
+    totalTokensFromLogs += log.tokens || 0;
+    totalLatency += log.latency || 0;
   });
   
   res.json({
     config: model,
-    requestCount: model.requestCount || 0,
-    totalTokens: model.totalTokens || 0,
+    requestCount: modelLogs.length,
+    totalTokens: totalTokensFromLogs,
     totalRequests: modelLogs.length,
+    avgLatency: modelLogs.length > 0 ? Math.round(totalLatency / modelLogs.length) : 0,
     byStrategy,
     recentLogs: modelLogs.slice(0, 50)
   });
