@@ -83,7 +83,7 @@
   },
   "about": {
     "version": "1.0.0",
-    "build": "Spring Boot 3.2.4 + Electron 28",
-    "database": "H2 (嵌入式)"
+    "build": "React + Electron",
+    "database": "JSON File"
   }
 }
