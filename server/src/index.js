@@ -287,7 +287,7 @@ app.get('/api/app/settings', (req, res) => {
 // 合并静态配置和用户配置
 app.get('/api/config/settings', (req, res) => {
   const data = db.getData();
-  const appSettings = readSettings();
+  const appSettings = db.readSettings();
   
   const merged = {
     ...appSettings.defaults,
