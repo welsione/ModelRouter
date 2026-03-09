@@ -28,10 +28,12 @@ function SettingsPage() {
   const [newProviderTestResult, setNewProviderTestResult] = useState(null);
   const [availableModels, setAvailableModels] = useState([]);
   const [loadingModels, setLoadingModels] = useState(false);
-  const [routerModelTested, setRouterModelTested] = useState(false);
+ Tested, set const [routerModelRouterModelTested] = useState(false);
   const [initialLoaded, setInitialLoaded] = useState(false);
   const [aboutInfo, setAboutInfo] = useState({ version: '1.0.0', build: '', database: '' });
   const [restarting, setRestarting] = useState(false);
+  const [serverDefaults, setServerDefaults] = useState({});
+  const [routerDefaults, setRouterDefaults] = useState({});
 
   useEffect(() => {
     fetchData();
@@ -55,6 +57,8 @@ function SettingsPage() {
       const defaults = appSettings.defaults || {};
       const routerDefaults = defaults.router || {};
       const serverDefaults = defaults.server || {};
+      setServerDefaults(serverDefaults);
+      setRouterDefaults(routerDefaults);
       
       setSettings({
         serverPort: serverDefaults.port || 8080,
@@ -212,7 +216,50 @@ function SettingsPage() {
 
   return (
     <div className="p-6 max-w-4xl">
-      <h2 className="text-2xl font-bold text-gray-800 dark:text-white mb-6">设置</h2>
+      <div className="flex items-center justify-between mb-6">
+        <h2 className="text-2xl font-bold text-gray-800 dark:text-white">设置</h2>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 px-4 py-2 bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 rounded-lg">
+            <CheckCircle size={18} />
+            {saved ? '已自动保存' : '自动保存中...'}
+          </div>
+          <button
+            onClick={() => setSettings({
+              serverPort: serverDefaults?.port || 8080,
+              logLevel: serverDefaults?.logLevel || 'DEBUG',
+              cacheExpireMinutes: 5,
+              defaultFallbackModelId: '',
+              providerConfigs: {},
+              routerModelType: routerDefaults?.modelType || 'openai',
+              routerModelBaseUrl: '',
+              routerModelApiKey: '',
+              routerModelName: routerDefaults?.modelName || 'gpt-4o-mini',
+              routerModelTemperature: routerDefaults?.temperature || 0.7
+            })}
+            className="flex items-center gap-2 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+          >
+            <RotateCcw size={18} />
+            重置
+          </button>
+          <button
+            onClick={async () => {
+              if (!window.confirm('确定要重启服务吗？')) return;
+              setRestarting(true);
+              try {
+                await fetch('/api/system/restart', { method: 'POST' });
+              } catch (e) {}
+              setTimeout(() => {
+                window.location.reload();
+              }, 3000);
+            }}
+            disabled={restarting}
+            className="flex items-center gap-2 px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 disabled:opacity-50"
+          >
+            <RotateCcw size={18} className={restarting ? 'animate-spin' : ''} />
+            {restarting ? '重启中...' : '重启服务'}
+          </button>
+        </div>
+      </div>
 
       <div className="space-y-6">
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">

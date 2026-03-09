@@ -928,7 +928,14 @@ app.post('/api/chat', async (req, res) => {
 app.post('/api/system/restart', (req, res) => {
   console.log('Restart requested...');
   res.json({ message: 'Server restarting...' });
+  
   setTimeout(() => {
+    const child = require('child_process').spawn(
+      process.execPath,
+      [__filename],
+      { cwd: process.cwd(), detached: true, stdio: 'ignore' }
+    );
+    child.unref();
     process.exit(0);
   }, 1000);
 });
