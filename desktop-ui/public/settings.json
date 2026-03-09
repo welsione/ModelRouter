@@ -1,0 +1,60 @@
+{
+  "providerTemplates": [
+    {
+      "id": "openai",
+      "name": "OpenAI",
+      "icon": "/image/openai.png",
+      "baseUrl": "https://api.openai.com/v1",
+      "apiKeyPrefix": "sk-"
+    },
+    {
+      "id": "ollama",
+      "name": "Ollama",
+      "icon": "/image/ollama.png",
+      "baseUrl": "http://localhost:11434/v1",
+      "apiKeyPrefix": ""
+    },
+    {
+      "id": "deepseek",
+      "name": "DeepSeek",
+      "icon": "/image/deepseek.svg",
+      "baseUrl": "https://api.deepseek.com/v1",
+      "apiKeyPrefix": "sk-"
+    },
+    {
+      "id": "moonshot",
+      "name": "Moonshot",
+      "icon": "/image/moonshot.png",
+      "baseUrl": "https://api.moonshot.cn/v1",
+      "apiKeyPrefix": ""
+    },
+    {
+      "id": "qwen",
+      "name": "Qwen",
+      "icon": "/image/qwen.svg",
+      "baseUrl": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+      "apiKeyPrefix": ""
+    },
+    {
+      "id": "zhipu",
+      "name": "智谱AI",
+      "icon": "/image/zhipu.svg",
+      "baseUrl": "https://open.bigmodel.cn/api/paas/v4",
+      "apiKeyPrefix": ""
+    },
+    {
+      "id": "minimax",
+      "name": "MiniMax",
+      "icon": "/image/minimax.svg",
+      "baseUrl": "https://api.minimax.chat/v1",
+      "apiKeyPrefix": ""
+    },
+    {
+      "id": "siliconflow",
+      "name": "SiliconFlow",
+      "icon": "/image/siliconflow.jpeg",
+      "baseUrl": "https://api.siliconflow.cn/v1",
+      "apiKeyPrefix": "sk-"
+    }
+  ]
+}
