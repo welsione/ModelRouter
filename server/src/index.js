@@ -923,6 +923,16 @@ app.post('/api/chat', async (req, res) => {
   }
 });
 
+// ============ System API ============
+
+app.post('/api/system/restart', (req, res) => {
+  console.log('Restart requested...');
+  res.json({ message: 'Server restarting...' });
+  setTimeout(() => {
+    process.exit(0);
+  }, 1000);
+});
+
 // ============ 启动服务器 ============
 
 app.listen(PORT, () => {

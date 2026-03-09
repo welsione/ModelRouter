@@ -31,6 +31,7 @@ function SettingsPage() {
   const [routerModelTested, setRouterModelTested] = useState(false);
   const [initialLoaded, setInitialLoaded] = useState(false);
   const [aboutInfo, setAboutInfo] = useState({ version: '1.0.0', build: '', database: '' });
+  const [restarting, setRestarting] = useState(false);
 
   useEffect(() => {
     fetchData();
@@ -500,6 +501,25 @@ function SettingsPage() {
             <p><span className="font-medium">版本:</span> {aboutInfo.version || '1.0.0'}</p>
             <p><span className="font-medium">构建:</span> {aboutInfo.build || '-'}</p>
             <p><span className="font-medium">数据库:</span> {aboutInfo.database || '-'}</p>
+          </div>
+          <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+            <button
+              onClick={async () => {
+                if (!window.confirm('确定要重启服务吗？')) return;
+                setRestarting(true);
+                try {
+                  await fetch('/api/system/restart', { method: 'POST' });
+                } catch (e) {}
+                setTimeout(() => {
+                  window.location.reload();
+                }, 3000);
+              }}
+              disabled={restarting}
+              className="flex items-center gap-2 px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 disabled:opacity-50"
+            >
+              <RotateCcw size={16} className={restarting ? 'animate-spin' : ''} />
+              {restarting ? '重启中...' : '重启服务'}
+            </button>
           </div>
         </div>
 
