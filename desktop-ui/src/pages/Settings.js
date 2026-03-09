@@ -37,31 +37,34 @@ function SettingsPage() {
 
   const fetchData = async () => {
     try {
-      const [settingsRes, modelsRes, templatesRes] = await Promise.all([
+      const [settingsRes, modelsRes, appSettingsRes] = await Promise.all([
         fetch('/api/config/settings'),
         fetch('/api/config/models'),
-        fetch('/settings.json')
+        fetch('/api/app/settings')
       ]);
       const settingsData = await settingsRes.json();
       const modelsData = await modelsRes.json();
-      const templatesData = await templatesRes.json();
+      const appSettings = await appSettingsRes.json();
       
-      const templates = templatesData.providerTemplates || [];
+      const templates = appSettings.providerTemplates || [];
       setProviderTemplates(templates);
       
       const providerConfigs = settingsData.providerConfigs || {};
+      const defaults = appSettings.defaults || {};
+      const routerDefaults = defaults.router || {};
+      const serverDefaults = defaults.server || {};
       
       setSettings({
-        serverPort: '8080',
-        logLevel: 'DEBUG',
+        serverPort: serverDefaults.port || 8080,
+        logLevel: serverDefaults.logLevel || 'DEBUG',
         cacheExpireMinutes: 5,
         defaultFallbackModelId: settingsData.defaultFallbackModelId || '',
         providerConfigs: providerConfigs,
-        routerModelType: settingsData.routerModelType || 'openai',
-        routerModelBaseUrl: settingsData.routerModelBaseUrl || 'https://api.openai.com/v1',
+        routerModelType: settingsData.routerModelType || routerDefaults.modelType || 'openai',
+        routerModelBaseUrl: settingsData.routerModelBaseUrl || '',
         routerModelApiKey: settingsData.routerModelApiKey || '',
-        routerModelName: settingsData.routerModelName || 'gpt-4o-mini',
-        routerModelTemperature: settingsData.routerModelTemperature || 0.7
+        routerModelName: settingsData.routerModelName || routerDefaults.modelName || 'gpt-4o-mini',
+        routerModelTemperature: settingsData.routerModelTemperature || routerDefaults.temperature || 0.7
       });
       setModels(modelsData);
     } catch (err) {

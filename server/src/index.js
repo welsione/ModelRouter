@@ -379,11 +379,17 @@ app.get('/api/app/settings', (req, res) => {
   res.json(settings);
 });
 
-// ============ Settings API ============
-
+// 合并静态配置和用户配置
 app.get('/api/config/settings', (req, res) => {
   const data = readData();
-  res.json(data.settings || { id: 'default' });
+  const appSettings = readSettings();
+  
+  const merged = {
+    ...appSettings.defaults,
+    ...data.settings,
+    providerConfigs: data.settings?.providerConfigs || {}
+  };
+  res.json(merged);
 });
 
 app.post('/api/config/settings', (req, res) => {

@@ -58,15 +58,27 @@
     }
   ],
   "defaults": {
-    "icon":"/image/icon.png",
-    "name":"ModelRouter",
-    "description": "Your Smart Model Router",
-    "temperature": 0.7,
-    "maxTokens": 500,
-    "routerMaxTokens": 500,
-    "routerTemperature": 0.7,
-    "fallbackModelId": "",
-    "routerPrompt": "你是一个智能模型路由器。根据用户查询，从候选模型中选择最合适的一个。",
-    "routerResponseFormat": "请以JSON格式返回，格式如下：\n{\"selected_model_id\": \"模型ID\", \"reason\": \"选择理由\"}"
+    "app": {
+      "icon": "/image/icon.png",
+      "name": "ModelRouter",
+      "description": "Your Smart Model Router"
+    },
+    "server": {
+      "port": 8080,
+      "logLevel": "DEBUG"
+    },
+    "model": {
+      "temperature": 0.7,
+      "maxTokens": 500,
+      "timeoutSeconds": 120
+    },
+    "router": {
+      "modelType": "openai",
+      "modelName": "gpt-4o-mini",
+      "temperature": 0.7,
+      "maxTokens": 500,
+      "prompt": "你是一个智能模型路由器。根据用户查询，从候选模型中选择最合适的一个。",
+      "responseFormat": "请以JSON格式返回，格式如下：\n{\"selected_model_id\": \"模型ID\", \"reason\": \"选择理由\"}"
+    }
   }
 }
