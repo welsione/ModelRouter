@@ -20,10 +20,10 @@ function App() {
     fetch('/api/app/settings')
       .then(res => res.json())
       .then(data => {
-        if (data.defaults) {
+        if (data.defaults?.app) {
           setAppConfig({
-            name: data.defaults.name || 'ModelRouter',
-            description: data.defaults.description || 'Smart Model Router'
+            name: data.defaults.app.name || 'ModelRouter',
+            description: data.defaults.app.description || 'Smart Model Router'
           });
         }
       })

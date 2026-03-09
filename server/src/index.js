@@ -650,12 +650,12 @@ app.post('/v1/chat/completions', async (req, res) => {
                 tokens: estimateTokens(fullContent)
               };
               
-              const logs = readLogs();
-              logs.push(log);
-              if (logs.length > 10000) {
-                logs.slice(-10000);
-              }
-              writeLogs(logs);
+      const logs = readLogs();
+      logs.push(log);
+      if (logs.length > 10000) {
+        logs = logs.slice(-10000);
+      }
+      writeLogs(logs);
               
               const modelIndex = (data.models || []).findIndex(m => m.id === modelConfig.id);
               if (modelIndex !== -1) {
