@@ -80,5 +80,10 @@
       "prompt": "你是一个智能模型路由器。根据用户查询，从候选模型中选择最合适的一个。",
       "responseFormat": "请以JSON格式返回，格式如下：\n{\"selected_model_id\": \"模型ID\", \"reason\": \"选择理由\"}"
     }
+  },
+  "about": {
+    "version": "1.0.0",
+    "build": "Spring Boot 3.2.4 + Electron 28",
+    "database": "H2 (嵌入式)"
   }
 }

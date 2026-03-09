@@ -30,6 +30,7 @@ function SettingsPage() {
   const [loadingModels, setLoadingModels] = useState(false);
   const [routerModelTested, setRouterModelTested] = useState(false);
   const [initialLoaded, setInitialLoaded] = useState(false);
+  const [aboutInfo, setAboutInfo] = useState({ version: '1.0.0', build: '', database: '' });
 
   useEffect(() => {
     fetchData();
@@ -67,6 +68,7 @@ function SettingsPage() {
         routerModelTemperature: settingsData.routerModelTemperature || routerDefaults.temperature || 0.7
       });
       setModels(modelsData);
+      setAboutInfo(appSettings.about || {});
     } catch (err) {
       console.error('Failed to fetch data:', err);
       setProviderTemplates([
@@ -495,9 +497,9 @@ function SettingsPage() {
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
           <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-4">关于</h3>
           <div className="space-y-2 text-sm text-gray-600 dark:text-gray-400">
-            <p><span className="font-medium">版本:</span> 1.0.0</p>
-            <p><span className="font-medium">构建:</span> Spring Boot 3.2.4 + Electron 28</p>
-            <p><span className="font-medium">数据库:</span> H2 (嵌入式)</p>
+            <p><span className="font-medium">版本:</span> {aboutInfo.version || '1.0.0'}</p>
+            <p><span className="font-medium">构建:</span> {aboutInfo.build || '-'}</p>
+            <p><span className="font-medium">数据库:</span> {aboutInfo.database || '-'}</p>
           </div>
         </div>
 
