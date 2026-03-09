@@ -9,9 +9,36 @@ const PORT = 8080;
 const DATA_DIR = path.join(__dirname, '..', 'data');
 const DATA_FILE = path.join(DATA_DIR, 'config.json');
 const LOGS_FILE = path.join(DATA_DIR, 'logs.json');
+const EXAMPLE_FILE = path.join(DATA_DIR, 'config.example.json');
 
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
+
+// 验证数据完整性
+function validateData(data) {
+  if (!data || typeof data !== 'object') return false;
+  if (!Array.isArray(data.models)) return false;
+  if (!Array.isArray(data.strategies)) return false;
+  if (!Array.isArray(data.candidates)) return false;
+  if (!data.settings || typeof data.settings !== 'object') return false;
+  return true;
+}
+
+// 从示例文件恢复数据
+function restoreFromExample() {
+  try {
+    if (fs.existsSync(EXAMPLE_FILE)) {
+      const exampleData = JSON.parse(fs.readFileSync(EXAMPLE_FILE, 'utf-8'));
+      if (validateData(exampleData)) {
+        console.log('Restored data from config.example.json');
+        return exampleData;
+      }
+    }
+  } catch (err) {
+    console.error('Error restoring from example:', err);
+  }
+  return initData();
+}
 
 // 读取数据
 function readData() {
@@ -20,13 +47,21 @@ function readData() {
       fs.mkdirSync(DATA_DIR, { recursive: true });
     }
     if (!fs.existsSync(DATA_FILE)) {
-      return initData();
+      return restoreFromExample();
     }
-    const data = fs.readFileSync(DATA_FILE, 'utf-8');
-    return JSON.parse(data);
+    const fileContent = fs.readFileSync(DATA_FILE, 'utf-8');
+    const data = JSON.parse(fileContent);
+    
+    // 验证数据完整性
+    if (!validateData(data)) {
+      console.warn('Invalid data format, restoring from example...');
+      return restoreFromExample();
+    }
+    
+    return data;
   } catch (err) {
     console.error('Error reading data:', err);
-    return initData();
+    return restoreFromExample();
   }
 }
 
