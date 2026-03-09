@@ -7,7 +7,7 @@
     <meta name="description" content="Your Smart Model Router" />
     <title>ModelRouter</title>
     <script>
-      fetch('/settings.json')
+      fetch('/static.json')
         .then(res => res.json())
         .then(data => {
           if (data.defaults) {

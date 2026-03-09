@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Save, RotateCcw, Bot, AlertCircle, Play, CheckCircle, XCircle, Globe, Plus, Trash2, Edit2, X } from 'lucide-react';
 
 function SettingsPage() {
@@ -28,12 +28,32 @@ function SettingsPage() {
   const [newProviderTestResult, setNewProviderTestResult] = useState(null);
   const [availableModels, setAvailableModels] = useState([]);
   const [loadingModels, setLoadingModels] = useState(false);
+  const [modelSearch, setModelSearch] = useState('');
+  const [showModelDropdown, setShowModelDropdown] = useState(false);
   const [routerModelTested, setRouterModelTested] = useState(false);
   const [initialLoaded, setInitialLoaded] = useState(false);
   const [aboutInfo, setAboutInfo] = useState({ version: '1.0.0', build: '', database: '' });
   const [restarting, setRestarting] = useState(false);
   const [serverDefaults, setServerDefaults] = useState({});
   const [routerDefaults, setRouterDefaults] = useState({});
+  const [options, setOptions] = useState({});
+  const dropdownRef = useRef(null);
+
+  const filteredModels = modelSearch
+    ? availableModels.filter(m => 
+        m.toLowerCase().includes(modelSearch.toLowerCase())
+      )
+    : availableModels;
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setShowModelDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   useEffect(() => {
     fetchData();
@@ -60,8 +80,10 @@ function SettingsPage() {
       const defaults = appSettings.defaults || {};
       const routerDefaults = defaults.router || {};
       const serverDefaults = defaults.server || {};
+      const appOptions = appSettings.options || {};
       setServerDefaults(serverDefaults);
       setRouterDefaults(routerDefaults);
+      setOptions(appOptions);
       
       setSettings({
         serverPort: serverDefaults.port || 8080,
@@ -402,35 +424,66 @@ function SettingsPage() {
               <>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">模型名称</label>
-                  <div className="flex gap-2">
-                    <select
-                      value={availableModels.includes(settings.routerModelName) ? settings.routerModelName : ''}
-                      onChange={e => {
-                        setSettings({...settings, routerModelName: e.target.value});
-                        setRouterModelTested(false);
-                      }}
-                      className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-800 dark:text-white"
-                    >
-                      <option value="">选择模型</option>
-                      {loadingModels ? (
-                        <option>加载中...</option>
-                      ) : (
-                        availableModels.map(m => (
-                          <option key={m} value={m}>{m}</option>
-                        ))
-                      )}
-                    </select>
+                  <div className="relative" ref={dropdownRef}>
                     <input
                       type="text"
-                      value={availableModels.includes(settings.routerModelName) ? '' : settings.routerModelName}
+                      value={modelSearch || settings.routerModelName}
                       onChange={e => {
-                        setSettings({...settings, routerModelName: e.target.value});
+                        const value = e.target.value;
+                        setModelSearch(value);
+                        setShowModelDropdown(true);
+                        setSettings({...settings, routerModelName: value});
                         setRouterModelTested(false);
                       }}
-                      placeholder="或手动输入模型名称"
-                      className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-800 dark:text-white"
+                      onFocus={() => setShowModelDropdown(true)}
+                      placeholder={loadingModels ? "加载模型中..." : "搜索或输入模型名称"}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-800 dark:text-white"
                     />
+                    {showModelDropdown && (
+                      <div className="absolute z-10 w-full mt-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg max-h-64 overflow-y-auto">
+                        {loadingModels ? (
+                          <div className="px-3 py-2 text-gray-500 text-sm">加载中...</div>
+                        ) : modelSearch ? (
+                          filteredModels.length > 0 ? (
+                            filteredModels.map(m => (
+                              <button
+                                key={m}
+                                onClick={() => {
+                                  setSettings({...settings, routerModelName: m});
+                                  setModelSearch(m);
+                                  setShowModelDropdown(false);
+                                  setRouterModelTested(false);
+                                }}
+                                className="w-full px-3 py-2 text-left text-sm text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600"
+                              >
+                                {m}
+                              </button>
+                            ))
+                          ) : (
+                            <div className="px-3 py-2 text-gray-500 text-sm">未找到匹配模型</div>
+                          )
+                        ) : (
+                          availableModels.slice(0, 20).map(m => (
+                            <button
+                              key={m}
+                              onClick={() => {
+                                setSettings({...settings, routerModelName: m});
+                                setModelSearch(m);
+                                setShowModelDropdown(false);
+                                setRouterModelTested(false);
+                              }}
+                              className="w-full px-3 py-2 text-left text-sm text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600"
+                            >
+                              {m}
+                            </button>
+                          ))
+                        )}
+                      </div>
+                    )}
                   </div>
+                  <p className="text-xs text-gray-500 mt-1">
+                    共 {availableModels.length} 个模型，输入关键词搜索
+                  </p>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
@@ -438,9 +491,9 @@ function SettingsPage() {
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Temperature</label>
                     <input
                       type="number"
-                      step="0.1"
-                      min="0"
-                      max="2"
+                      step={options.temperatureRange?.step || 0.1}
+                      min={options.temperatureRange?.min || 0}
+                      max={options.temperatureRange?.max || 2}
                       value={settings.routerModelTemperature}
                       onChange={e => setSettings({...settings, routerModelTemperature: parseFloat(e.target.value)})}
                       className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-800 dark:text-white"
@@ -526,10 +579,9 @@ function SettingsPage() {
                 onChange={e => setSettings({...settings, logLevel: e.target.value})}
                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-800 dark:text-white"
               >
-                <option value="DEBUG">DEBUG</option>
-                <option value="INFO">INFO</option>
-                <option value="WARN">WARN</option>
-                <option value="ERROR">ERROR</option>
+                {(options.logLevels || ['DEBUG', 'INFO', 'WARN', 'ERROR']).map(level => (
+                  <option key={level} value={level}>{level}</option>
+                ))}
               </select>
             </div>
 
