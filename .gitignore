@@ -34,4 +34,3 @@ out/
 # Server data (private)
 server/data/config.json
 server/data/logs.json
-server/data/settings.json
