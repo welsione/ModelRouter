@@ -359,17 +359,17 @@ app.get('/api/config/logs', (req, res) => {
 
 // ============ App Settings API (static) ============
 
-const SETTINGS_FILE = path.join(DATA_DIR, 'settings.json');
+const STATIC_FILE = path.join(DATA_DIR, 'static.json');
 
 function readSettings() {
   try {
-    if (!fs.existsSync(SETTINGS_FILE)) {
+    if (!fs.existsSync(STATIC_FILE)) {
       return { providerTemplates: [], defaults: {} };
     }
-    const data = fs.readFileSync(SETTINGS_FILE, 'utf-8');
+    const data = fs.readFileSync(STATIC_FILE, 'utf-8');
     return JSON.parse(data);
   } catch (err) {
-    console.error('Error reading settings:', err);
+    console.error('Error reading static settings:', err);
     return { providerTemplates: [], defaults: {} };
   }
 }
