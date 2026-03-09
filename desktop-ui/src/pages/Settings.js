@@ -41,11 +41,14 @@ function SettingsPage() {
 
   const fetchData = async () => {
     try {
-      const [settingsRes, modelsRes, appSettingsRes] = await Promise.all([
-        fetch('/api/config/settings'),
-        fetch('/api/config/models'),
-        fetch('/static.json')
-      ]);
+      const settingsRes = await fetch('/api/config/settings');
+      const modelsRes = await fetch('/api/config/models');
+      const appSettingsRes = await fetch('/static.json');
+      
+      if (!settingsRes.ok || !modelsRes.ok || !appSettingsRes.ok) {
+        throw new Error('Failed to fetch data');
+      }
+      
       const settingsData = await settingsRes.json();
       const modelsData = await modelsRes.json();
       const appSettings = await appSettingsRes.json();

@@ -1,154 +1,25 @@
 const express = require('express');
 const cors = require('cors');
-const fs = require('fs');
-const path = require('path');
 const { v4: uuidv4 } = require('uuid');
+const db = require('./db');
 
 const app = express();
 const PORT = 8080;
-const DATA_DIR = path.join(__dirname, '..', 'data');
-const DATA_FILE = path.join(DATA_DIR, 'config.json');
-const LOGS_FILE = path.join(DATA_DIR, 'logs.json');
-const EXAMPLE_FILE = path.join(DATA_DIR, 'config.example.json');
 
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 
-// 验证数据完整性
-function validateData(data) {
-  if (!data || typeof data !== 'object') return false;
-  if (!Array.isArray(data.models)) return false;
-  if (!Array.isArray(data.strategies)) return false;
-  if (!Array.isArray(data.candidates)) return false;
-  if (!data.settings || typeof data.settings !== 'object') return false;
-  return true;
-}
-
-// 从示例文件恢复数据
-function restoreFromExample() {
-  try {
-    if (fs.existsSync(EXAMPLE_FILE)) {
-      const exampleData = JSON.parse(fs.readFileSync(EXAMPLE_FILE, 'utf-8'));
-      if (validateData(exampleData)) {
-        console.log('Restored data from config.example.json');
-        return exampleData;
-      }
-    }
-  } catch (err) {
-    console.error('Error restoring from example:', err);
-  }
-  return initData();
-}
-
-// 读取数据
-function readData() {
-  try {
-    if (!fs.existsSync(DATA_DIR)) {
-      fs.mkdirSync(DATA_DIR, { recursive: true });
-    }
-    if (!fs.existsSync(DATA_FILE)) {
-      return restoreFromExample();
-    }
-    const fileContent = fs.readFileSync(DATA_FILE, 'utf-8');
-    const data = JSON.parse(fileContent);
-    
-    // 验证数据完整性
-    if (!validateData(data)) {
-      console.warn('Invalid data format, restoring from example...');
-      return restoreFromExample();
-    }
-    
-    return data;
-  } catch (err) {
-    console.error('Error reading data:', err);
-    return restoreFromExample();
-  }
-}
-
-// 写入数据
-function writeData(data) {
-  try {
-    if (!data || typeof data !== 'object') {
-      console.error('Invalid data: not an object');
-      return false;
-    }
-    if (!fs.existsSync(DATA_DIR)) {
-      fs.mkdirSync(DATA_DIR, { recursive: true });
-    }
-    const jsonStr = JSON.stringify(data, null, 2);
-    if (!jsonStr || jsonStr === '[DONE]') {
-      console.error('Invalid data: empty or invalid content');
-      return false;
-    }
-    fs.writeFileSync(DATA_FILE, jsonStr, 'utf-8');
-    return true;
-  } catch (err) {
-    console.error('Error writing data:', err);
-    return false;
-  }
-}
-
-// 读取日志
-function readLogs() {
-  try {
-    if (!fs.existsSync(DATA_DIR)) {
-      fs.mkdirSync(DATA_DIR, { recursive: true });
-    }
-    if (!fs.existsSync(LOGS_FILE)) {
-      return [];
-    }
-    const data = fs.readFileSync(LOGS_FILE, 'utf-8');
-    return JSON.parse(data);
-  } catch (err) {
-    console.error('Error reading logs:', err);
-    return [];
-  }
-}
-
-// 写入日志
-function writeLogs(logs) {
-  try {
-    if (!fs.existsSync(DATA_DIR)) {
-      fs.mkdirSync(DATA_DIR, { recursive: true });
-    }
-    fs.writeFileSync(LOGS_FILE, JSON.stringify(logs, null, 2), 'utf-8');
-    return true;
-  } catch (err) {
-    console.error('Error writing logs:', err);
-    return false;
-  }
-}
-
-// 初始化数据
-function initData() {
-  const data = {
-    models: [],
-    strategies: [],
-    candidates: [],
-    settings: {
-      id: 'default',
-      providerConfigs: {},
-      routerModelType: '',
-      routerModelBaseUrl: '',
-      routerModelApiKey: '',
-      routerModelName: '',
-      routerModelTemperature: 0.7
-    }
-  };
-  writeData(data);
-  writeLogs([]);
-  return data;
-}
+db.initDb();
 
 // ============ Models API ============
 
 app.get('/api/config/models', (req, res) => {
-  const data = readData();
+  const data = db.getData();
   res.json(data.models || []);
 });
 
 app.get('/api/config/models/:id', (req, res) => {
-  const data = readData();
+  const data = db.getData();
   const model = (data.models || []).find(m => m.id === req.params.id);
   if (!model) {
     return res.status(404).json({ error: 'Model not found' });
@@ -157,7 +28,7 @@ app.get('/api/config/models/:id', (req, res) => {
 });
 
 app.post('/api/config/models', (req, res) => {
-  const data = readData();
+  const data = db.getData();
   const model = req.body;
   model.id = model.id || uuidv4();
   model.createTime = new Date().toISOString();
@@ -168,13 +39,13 @@ app.post('/api/config/models', (req, res) => {
   
   if (!data.models) data.models = [];
   data.models.push(model);
-  writeData(data);
+  db.setData(data);
   
   res.json(model);
 });
 
 app.put('/api/config/models/:id', (req, res) => {
-  const data = readData();
+  const data = db.getData();
   const index = (data.models || []).findIndex(m => m.id === req.params.id);
   
   if (index === -1) {
@@ -182,21 +53,21 @@ app.put('/api/config/models/:id', (req, res) => {
   }
   
   data.models[index] = { ...data.models[index], ...req.body };
-  writeData(data);
+  db.setData(data);
   
   res.json(data.models[index]);
 });
 
 app.delete('/api/config/models/:id', (req, res) => {
-  const data = readData();
+  const data = db.getData();
   data.models = (data.models || []).filter(m => m.id !== req.params.id);
-  writeData(data);
+  db.setData(data);
   
   res.json({ success: true });
 });
 
 app.post('/api/config/models/:id/test', async (req, res) => {
-  const data = readData();
+  const data = db.getData();
   const model = (data.models || []).find(m => m.id === req.params.id);
   
   if (!model) {
@@ -231,7 +102,7 @@ app.post('/api/config/models/:id/test', async (req, res) => {
         const totalLatency = (data.models[index].totalLatency || 0) + latency;
         data.models[index].totalLatency = totalLatency;
         data.models[index].avgLatency = Math.round(totalLatency / data.models[index].requestCount);
-        writeData(data);
+        db.setData(data);
       }
       
       res.json({
@@ -258,14 +129,14 @@ app.post('/api/config/models/:id/test', async (req, res) => {
 });
 
 app.get('/api/config/models/:id/stats', (req, res) => {
-  const data = readData();
+  const data = db.getData();
   const model = (data.models || []).find(m => m.id === req.params.id);
   
   if (!model) {
     return res.status(404).json({ error: 'Model not found' });
   }
   
-  const allLogs = readLogs();
+  const allLogs = db.getLogs();
   const modelLogs = allLogs.filter(l => l.selectedModelId === req.params.id);
   
   const byStrategy = {};
@@ -292,26 +163,26 @@ app.get('/api/config/models/:id/stats', (req, res) => {
 // ============ Router Config API (Legacy) ============
 
 app.get('/api/config/router', (req, res) => {
-  const data = readData();
+  const data = db.getData();
   res.json(data.router || { id: 1, systemPrompt: 'Default Router Prompt' });
 });
 
 app.post('/api/config/router', (req, res) => {
-  const data = readData();
+  const data = db.getData();
   data.router = { ...data.router, ...req.body, id: 1 };
-  writeData(data);
+  db.setData(data);
   res.json(data.router);
 });
 
 // ============ Strategies API ============
 
 app.get('/api/config/strategies', (req, res) => {
-  const data = readData();
+  const data = db.getData();
   res.json(data.strategies || []);
 });
 
 app.get('/api/config/strategies/:id', (req, res) => {
-  const data = readData();
+  const data = db.getData();
   const strategy = (data.strategies || []).find(s => s.id === req.params.id);
   if (!strategy) {
     return res.status(404).json({ error: 'Strategy not found' });
@@ -320,20 +191,20 @@ app.get('/api/config/strategies/:id', (req, res) => {
 });
 
 app.post('/api/config/strategies', (req, res) => {
-  const data = readData();
+  const data = db.getData();
   const strategy = req.body;
   strategy.id = strategy.id || uuidv4();
   strategy.createTime = new Date().toISOString();
   
   if (!data.strategies) data.strategies = [];
   data.strategies.push(strategy);
-  writeData(data);
+  db.setData(data);
   
   res.json(strategy);
 });
 
 app.put('/api/config/strategies/:id', (req, res) => {
-  const data = readData();
+  const data = db.getData();
   const index = (data.strategies || []).findIndex(s => s.id === req.params.id);
   
   if (index === -1) {
@@ -341,22 +212,22 @@ app.put('/api/config/strategies/:id', (req, res) => {
   }
   
   data.strategies[index] = { ...data.strategies[index], ...req.body };
-  writeData(data);
+  db.setData(data);
   
   res.json(data.strategies[index]);
 });
 
 app.delete('/api/config/strategies/:id', (req, res) => {
-  const data = readData();
+  const data = db.getData();
   data.strategies = (data.strategies || []).filter(s => s.id !== req.params.id);
   data.candidates = (data.candidates || []).filter(c => c.strategyId !== req.params.id);
-  writeData(data);
+  db.setData(data);
   
   res.json({ success: true });
 });
 
 app.get('/api/config/strategies/:strategyId/candidates', (req, res) => {
-  const data = readData();
+  const data = db.getData();
   const candidates = (data.candidates || []).filter(c => c.strategyId === req.params.strategyId);
   res.json(candidates);
 });
@@ -364,20 +235,20 @@ app.get('/api/config/strategies/:strategyId/candidates', (req, res) => {
 // ============ Candidates API ============
 
 app.post('/api/config/candidates', (req, res) => {
-  const data = readData();
+  const data = db.getData();
   const candidate = req.body;
   candidate.id = candidate.id || uuidv4();
   candidate.createTime = new Date().toISOString();
   
   if (!data.candidates) data.candidates = [];
   data.candidates.push(candidate);
-  writeData(data);
+  db.setData(data);
   
   res.json(candidate);
 });
 
 app.put('/api/config/candidates/:id', (req, res) => {
-  const data = readData();
+  const data = db.getData();
   const index = (data.candidates || []).findIndex(c => c.id === req.params.id);
   
   if (index === -1) {
@@ -385,15 +256,15 @@ app.put('/api/config/candidates/:id', (req, res) => {
   }
   
   data.candidates[index] = { ...data.candidates[index], ...req.body };
-  writeData(data);
+  db.setData(data);
   
   res.json(data.candidates[index]);
 });
 
 app.delete('/api/config/candidates/:id', (req, res) => {
-  const data = readData();
+  const data = db.getData();
   data.candidates = (data.candidates || []).filter(c => c.id !== req.params.id);
-  writeData(data);
+  db.setData(data);
   
   res.json({ success: true });
 });
@@ -401,36 +272,21 @@ app.delete('/api/config/candidates/:id', (req, res) => {
 // ============ Logs API ============
 
 app.get('/api/config/logs', (req, res) => {
-  const logs = readLogs();
+  const logs = db.getLogs();
   logs.sort((a, b) => new Date(b.createTime) - new Date(a.createTime));
   res.json(logs);
 });
 
 // ============ App Settings API (static) ============
 
-const STATIC_FILE = path.join(DATA_DIR, 'static.json');
-
-function readSettings() {
-  try {
-    if (!fs.existsSync(STATIC_FILE)) {
-      return { providerTemplates: [], defaults: {} };
-    }
-    const data = fs.readFileSync(STATIC_FILE, 'utf-8');
-    return JSON.parse(data);
-  } catch (err) {
-    console.error('Error reading static settings:', err);
-    return { providerTemplates: [], defaults: {} };
-  }
-}
-
 app.get('/api/app/settings', (req, res) => {
-  const settings = readSettings();
+  const settings = db.readSettings();
   res.json(settings);
 });
 
 // 合并静态配置和用户配置
 app.get('/api/config/settings', (req, res) => {
-  const data = readData();
+  const data = db.getData();
   const appSettings = readSettings();
   
   const merged = {
@@ -442,9 +298,9 @@ app.get('/api/config/settings', (req, res) => {
 });
 
 app.post('/api/config/settings', (req, res) => {
-  const data = readData();
+  const data = db.getData();
   data.settings = { ...data.settings, ...req.body };
-  writeData(data);
+  db.setData(data);
   
   res.json(data.settings);
 });
@@ -550,7 +406,7 @@ function selectCandidateSimple(candidates) {
 // ============ Chat API (OpenAI Compatible) ============
 
 app.post('/v1/chat/completions', async (req, res) => {
-  const data = readData();
+  const data = db.getData();
   const settings = data.settings || {};
   
   const {
@@ -679,8 +535,8 @@ app.post('/v1/chat/completions', async (req, res) => {
         
         for (const line of lines) {
           if (line.startsWith('data: ')) {
-            const data = line.slice(6);
-            if (data === '[DONE]') {
+            const streamData = line.slice(6);
+            if (streamData === '[DONE]') {
               // 记录日志
               const latency = Date.now() - startTime;
               const log = {
@@ -694,23 +550,24 @@ app.post('/v1/chat/completions', async (req, res) => {
                 tokens: estimateTokens(fullContent)
               };
               
-      const logs = readLogs();
-      logs.push(log);
-      if (logs.length > 10000) {
-        logs = logs.slice(-10000);
-      }
-      writeLogs(logs);
+              const logs = db.getLogs();
+              logs.push(log);
+              if (logs.length > 10000) {
+                logs = logs.slice(-10000);
+              }
+              db.setLogs(logs);
               
-              const modelIndex = (data.models || []).findIndex(m => m.id === modelConfig.id);
+              const modelData = db.getData();
+              const modelIndex = (modelData.models || []).findIndex(m => m.id === modelConfig.id);
               if (modelIndex !== -1) {
-                data.models[modelIndex].requestCount = (data.models[modelIndex].requestCount || 0) + 1;
-                data.models[modelIndex].lastLatency = latency;
-                const totalLatency = (data.models[modelIndex].totalLatency || 0) + latency;
-                data.models[modelIndex].totalLatency = totalLatency;
-                data.models[modelIndex].avgLatency = Math.round(totalLatency / data.models[modelIndex].requestCount);
+                modelData.models[modelIndex].requestCount = (modelData.models[modelIndex].requestCount || 0) + 1;
+                modelData.models[modelIndex].lastLatency = latency;
+                const totalLatency = (modelData.models[modelIndex].totalLatency || 0) + latency;
+                modelData.models[modelIndex].totalLatency = totalLatency;
+                modelData.models[modelIndex].avgLatency = Math.round(totalLatency / modelData.models[modelIndex].requestCount);
               }
               
-              writeData(data);
+              db.setData(modelData);
               
               res.write(`data: ${JSON.stringify({ 
                 id: `chatcmpl-${log.id}`, 
@@ -730,7 +587,7 @@ app.post('/v1/chat/completions', async (req, res) => {
             }
             
             try {
-              const parsed = JSON.parse(data);
+              const parsed = JSON.parse(streamData);
               if (parsed.choices && parsed.choices[0] && parsed.choices[0].delta && parsed.choices[0].delta.content) {
                 fullContent += parsed.choices[0].delta.content;
               }
@@ -821,12 +678,12 @@ app.post('/v1/chat/completions', async (req, res) => {
         tokens: usage.total_tokens || estimateTokens(reply)
       };
       
-      const logs = readLogs();
+      const logs = db.getLogs();
       logs.push(log);
       if (logs.length > 10000) {
         logs.slice(-10000);
       }
-      writeLogs(logs);
+      db.setLogs(logs);
       
       // 更新模型统计
       const modelIndex = (data.models || []).findIndex(m => m.id === modelConfig.id);
@@ -839,7 +696,7 @@ app.post('/v1/chat/completions', async (req, res) => {
         data.models[modelIndex].avgLatency = Math.round(totalLatency / data.models[modelIndex].requestCount);
       }
       
-      writeData(data);
+      db.setData(data);
       
       // 返回响应
       res.json({
@@ -873,7 +730,7 @@ app.post('/v1/chat/completions', async (req, res) => {
 app.post('/api/chat', async (req, res) => {
   const { message, strategyId } = req.body;
   
-  const data = readData();
+  const data = db.getData();
   
   let strategy = null;
   if (strategyId) {
@@ -939,12 +796,12 @@ app.post('/api/chat', async (req, res) => {
         tokens: estimateTokens(reply)
       };
       
-      const logs = readLogs();
+      const logs = db.getLogs();
       logs.push(log);
       if (logs.length > 10000) {
         logs.slice(-10000);
       }
-      writeLogs(logs);
+      db.setLogs(logs);
       
       const modelIndex = (data.models || []).findIndex(m => m.id === model.id);
       if (modelIndex !== -1) {
@@ -956,7 +813,7 @@ app.post('/api/chat', async (req, res) => {
         data.models[modelIndex].avgLatency = Math.round(totalLatency / data.models[modelIndex].requestCount);
       }
       
-      writeData(data);
+      db.setData(data);
       
       res.json({
         message: reply,

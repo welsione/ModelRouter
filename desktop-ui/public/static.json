@@ -65,7 +65,8 @@
     },
     "server": {
       "port": 8080,
-      "logLevel": "DEBUG"
+      "logLevel": "DEBUG",
+      "cacheExpireMinutes": 5
     },
     "model": {
       "temperature": 0.7,
@@ -79,6 +80,55 @@
       "maxTokens": 500,
       "prompt": "你是一个智能模型路由器。根据用户查询，从候选模型中选择最合适的一个。",
       "responseFormat": "请以JSON格式返回，格式如下：\n{\"selected_model_id\": \"模型ID\", \"reason\": \"选择理由\"}"
+    },
+    "strategy": {
+      "maxContextTokens": 4096,
+      "temperature": 0.7,
+      "timeoutSeconds": 120,
+      "enableStream": false,
+      "priority": 50,
+      "weight": 1.0,
+      "enabled": true
+    },
+    "candidate": {
+      "priority": 50,
+      "weight": 1.0,
+      "enabled": true
+    }
+  },
+  "options": {
+    "logLevels": ["DEBUG", "INFO", "WARN", "ERROR"],
+    "temperatureRange": {
+      "min": 0,
+      "max": 2,
+      "step": 0.1
+    }
+  },
+  "ui": {
+    "latencyThresholds": {
+      "good": 1000,
+      "medium": 3000
+    },
+    "modelTypeColors": {
+      "openai": {
+        "light": "bg-green-100 text-green-700",
+        "dark": "dark:bg-green-900 dark:text-green-300"
+      },
+      "ollama": {
+        "light": "bg-purple-100 text-purple-700",
+        "dark": "dark:bg-purple-900 dark:text-purple-300"
+      },
+      "cloud": {
+        "light": "bg-blue-100 text-blue-700",
+        "dark": "dark:bg-blue-900 dark:text-blue-300"
+      },
+      "default": {
+        "light": "bg-gray-100 text-gray-700",
+        "dark": ""
+      }
+    },
+    "chatTest": {
+      "welcomeMessage": "你好！我是你的 AI 助手。有什么可以帮你的吗？"
     }
   },
   "about": {
