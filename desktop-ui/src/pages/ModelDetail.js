@@ -195,6 +195,11 @@ function ModelDetail({ modelId, onBack }) {
     }
   };
 
+  const getStrategyName = (strategyId) => {
+    const strategy = strategies.find(s => s.id === strategyId);
+    return strategy ? strategy.name : strategyId;
+  };
+
   const formatLatency = (ms) => {
     if (ms < 1000) return `${ms}ms`;
     return `${(ms / 1000).toFixed(1)}s`;
