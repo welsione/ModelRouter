@@ -8,6 +8,7 @@ const app = express();
 const PORT = 8080;
 const DATA_DIR = path.join(__dirname, '..', 'data');
 const DATA_FILE = path.join(DATA_DIR, 'config.json');
+const LOGS_FILE = path.join(DATA_DIR, 'logs.json');
 
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
@@ -43,13 +44,43 @@ function writeData(data) {
   }
 }
 
+// 读取日志
+function readLogs() {
+  try {
+    if (!fs.existsSync(DATA_DIR)) {
+      fs.mkdirSync(DATA_DIR, { recursive: true });
+    }
+    if (!fs.existsSync(LOGS_FILE)) {
+      return [];
+    }
+    const data = fs.readFileSync(LOGS_FILE, 'utf-8');
+    return JSON.parse(data);
+  } catch (err) {
+    console.error('Error reading logs:', err);
+    return [];
+  }
+}
+
+// 写入日志
+function writeLogs(logs) {
+  try {
+    if (!fs.existsSync(DATA_DIR)) {
+      fs.mkdirSync(DATA_DIR, { recursive: true });
+    }
+    fs.writeFileSync(LOGS_FILE, JSON.stringify(logs, null, 2), 'utf-8');
+    return true;
+  } catch (err) {
+    console.error('Error writing logs:', err);
+    return false;
+  }
+}
+
 // 初始化数据
 function initData() {
   const data = {
     models: [],
     strategies: [],
     candidates: [],
-    logs: [],
     settings: {
       id: 'default',
       providerConfigs: {},
@@ -61,6 +92,7 @@ function initData() {
     }
   };
   writeData(data);
+  writeLogs([]);
   return data;
 }
 
@@ -189,7 +221,8 @@ app.get('/api/config/models/:id/stats', (req, res) => {
     return res.status(404).json({ error: 'Model not found' });
   }
   
-  const modelLogs = (data.logs || []).filter(l => l.selectedModelId === req.params.id);
+  const allLogs = readLogs();
+  const modelLogs = allLogs.filter(l => l.selectedModelId === req.params.id);
   
   const byStrategy = {};
   modelLogs.forEach(log => {
@@ -319,8 +352,7 @@ app.delete('/api/config/candidates/:id', (req, res) => {
 // ============ Logs API ============
 
 app.get('/api/config/logs', (req, res) => {
-  const data = readData();
-  let logs = data.logs || [];
+  const logs = readLogs();
   logs.sort((a, b) => new Date(b.createTime) - new Date(a.createTime));
   res.json(logs);
 });
@@ -585,11 +617,12 @@ app.post('/v1/chat/completions', async (req, res) => {
                 tokens: estimateTokens(fullContent)
               };
               
-              data.logs = data.logs || [];
-              data.logs.push(log);
-              if (data.logs.length > 10000) {
-                data.logs = data.logs.slice(-10000);
+              const logs = readLogs();
+              logs.push(log);
+              if (logs.length > 10000) {
+                logs.slice(-10000);
               }
+              writeLogs(logs);
               
               const modelIndex = (data.models || []).findIndex(m => m.id === modelConfig.id);
               if (modelIndex !== -1) {
@@ -711,13 +744,12 @@ app.post('/v1/chat/completions', async (req, res) => {
         tokens: usage.total_tokens || estimateTokens(reply)
       };
       
-      if (!data.logs) data.logs = [];
-      data.logs.push(log);
-      
-      // 限制日志数量
-      if (data.logs.length > 10000) {
-        data.logs = data.logs.slice(-10000);
+      const logs = readLogs();
+      logs.push(log);
+      if (logs.length > 10000) {
+        logs.slice(-10000);
       }
+      writeLogs(logs);
       
       // 更新模型统计
       const modelIndex = (data.models || []).findIndex(m => m.id === modelConfig.id);
@@ -830,8 +862,12 @@ app.post('/api/chat', async (req, res) => {
         tokens: estimateTokens(reply)
       };
       
-      if (!data.logs) data.logs = [];
-      data.logs.push(log);
+      const logs = readLogs();
+      logs.push(log);
+      if (logs.length > 10000) {
+        logs.slice(-10000);
+      }
+      writeLogs(logs);
       
       const modelIndex = (data.models || []).findIndex(m => m.id === model.id);
       if (modelIndex !== -1) {
