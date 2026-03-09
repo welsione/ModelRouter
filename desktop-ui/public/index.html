@@ -4,8 +4,19 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#4285f4" />
-    <meta name="description" content="Gateway Core - Smart Model Router" />
-    <title>Gateway Core</title>
+    <meta name="description" content="Your Smart Model Router" />
+    <title>ModelRouter</title>
+    <script>
+      fetch('/settings.json')
+        .then(res => res.json())
+        .then(data => {
+          if (data.defaults) {
+            if (data.defaults.name) document.title = data.defaults.name;
+            if (data.defaults.description) document.querySelector('meta[name="description"]').setAttribute('content', data.defaults.description);
+          }
+        })
+        .catch(() => {});
+    </script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
       tailwind.config = {

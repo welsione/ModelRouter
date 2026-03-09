@@ -14,6 +14,21 @@ function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [selectedModelId, setSelectedModelId] = useState(null);
   const [selectedStrategyId, setSelectedStrategyId] = useState(null);
+  const [appConfig, setAppConfig] = useState({ name: 'ModelRouter', description: 'Smart Model Router' });
+
+  useEffect(() => {
+    fetch('/settings.json')
+      .then(res => res.json())
+      .then(data => {
+        if (data.defaults) {
+          setAppConfig({
+            name: data.defaults.name || 'ModelRouter',
+            description: data.defaults.description || 'Smart Model Router'
+          });
+        }
+      })
+      .catch(console.error);
+  }, []);
 
   useEffect(() => {
     const detectTheme = () => {
@@ -75,10 +90,10 @@ function App() {
       <aside className={`w-56 ${theme === 'dark' ? 'bg-gray-800' : 'bg-white'} border-r ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'} flex flex-col`}>
         <div className={`p-4 border-b ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
           <h1 className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-800'}`}>
-            Gateway Core
+            {appConfig.name}
           </h1>
           <p className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
-            Smart Model Router
+            {appConfig.description}
           </p>
         </div>
         

@@ -58,6 +58,9 @@
     }
   ],
   "defaults": {
+    "icon":"/image/icon.png",
+    "name":"ModelRouter",
+    "description": "Your Smart Model Router",
     "temperature": 0.7,
     "maxTokens": 500,
     "routerMaxTokens": 500,
