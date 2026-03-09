@@ -68,10 +68,19 @@ function readData() {
 // 写入数据
 function writeData(data) {
   try {
+    if (!data || typeof data !== 'object') {
+      console.error('Invalid data: not an object');
+      return false;
+    }
     if (!fs.existsSync(DATA_DIR)) {
       fs.mkdirSync(DATA_DIR, { recursive: true });
     }
-    fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2), 'utf-8');
+    const jsonStr = JSON.stringify(data, null, 2);
+    if (!jsonStr || jsonStr === '[DONE]') {
+      console.error('Invalid data: empty or invalid content');
+      return false;
+    }
+    fs.writeFileSync(DATA_FILE, jsonStr, 'utf-8');
     return true;
   } catch (err) {
     console.error('Error writing data:', err);
