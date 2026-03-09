@@ -30,5 +30,8 @@ logs/
 # Electron
 release/
 out/
-/.idea/
-/.idea/*
+
+# Server data (private)
+server/data/config.json
+server/data/logs.json
+server/data/settings.json

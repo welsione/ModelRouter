@@ -1,0 +1,15 @@
+{
+  "models": [],
+  "strategies": [],
+  "candidates": [],
+  "settings": {
+    "id": "default",
+    "providerConfigs": {},
+    "routerModelType": "",
+    "routerModelBaseUrl": "",
+    "routerModelApiKey": "",
+    "routerModelName": "",
+    "routerModelTemperature": 0.7,
+    "defaultFallbackModelId": ""
+  }
+}
