@@ -24,11 +24,11 @@ function ModelDetail({ modelId, onBack }) {
 
   const fetchData = async () => {
     try {
-      const [statsRes, strategiesRes, settingsRes, templatesRes] = await Promise.all([
+      const [statsRes, strategiesRes, settingsRes, appSettingsRes] = await Promise.all([
         fetch(`/api/config/models/${modelId}/stats`),
         fetch('/api/config/strategies'),
         fetch('/api/config/settings'),
-        fetch('/settings.json')
+        fetch('/api/app/settings')
       ]);
       
       if (!statsRes.ok) {
@@ -40,12 +40,12 @@ function ModelDetail({ modelId, onBack }) {
       const statsData = await statsRes.json();
       const strategiesData = await strategiesRes.json();
       const settingsData = await settingsRes.json();
-      const templatesData = await templatesRes.json();
+      const appSettings = await appSettingsRes.json();
       
       setStats(statsData);
       setModel(statsData.config);
       setStrategies(strategiesData);
-      setProviderTemplates(templatesData.providerTemplates || []);
+      setProviderTemplates(appSettings.providerTemplates || []);
       setProviderConfigs(settingsData.providerConfigs || {});
       
       const configType = statsData.config?.type;

@@ -28,7 +28,7 @@ function SettingsPage() {
   const [newProviderTestResult, setNewProviderTestResult] = useState(null);
   const [availableModels, setAvailableModels] = useState([]);
   const [loadingModels, setLoadingModels] = useState(false);
- Tested, set const [routerModelRouterModelTested] = useState(false);
+  const [routerModelTested, setRouterModelTested] = useState(false);
   const [initialLoaded, setInitialLoaded] = useState(false);
   const [aboutInfo, setAboutInfo] = useState({ version: '1.0.0', build: '', database: '' });
   const [restarting, setRestarting] = useState(false);
@@ -549,50 +549,6 @@ function SettingsPage() {
             <p><span className="font-medium">构建:</span> {aboutInfo.build || '-'}</p>
             <p><span className="font-medium">数据库:</span> {aboutInfo.database || '-'}</p>
           </div>
-          <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
-            <button
-              onClick={async () => {
-                if (!window.confirm('确定要重启服务吗？')) return;
-                setRestarting(true);
-                try {
-                  await fetch('/api/system/restart', { method: 'POST' });
-                } catch (e) {}
-                setTimeout(() => {
-                  window.location.reload();
-                }, 3000);
-              }}
-              disabled={restarting}
-              className="flex items-center gap-2 px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 disabled:opacity-50"
-            >
-              <RotateCcw size={16} className={restarting ? 'animate-spin' : ''} />
-              {restarting ? '重启中...' : '重启服务'}
-            </button>
-          </div>
-        </div>
-
-        <div className="flex gap-3">
-          <div className="flex items-center gap-2 px-6 py-2 bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 rounded-lg">
-            <CheckCircle size={18} />
-            {saved ? '已自动保存' : '自动保存中...'}
-          </div>
-          <button
-            onClick={() => setSettings({
-              serverPort: '8080',
-              logLevel: 'DEBUG',
-              cacheExpireMinutes: 5,
-              defaultFallbackModelId: '',
-              providerConfigs: {},
-              routerModelType: 'openai',
-              routerModelBaseUrl: 'https://api.openai.com/v1',
-              routerModelApiKey: '',
-              routerModelName: 'gpt-4o-mini',
-              routerModelTemperature: 0.7
-            })}
-            className="flex items-center gap-2 px-6 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
-          >
-            <RotateCcw size={18} />
-            重置
-          </button>
         </div>
       </div>
 

@@ -27,17 +27,17 @@ function Models({ onSelectModel }) {
 
   const fetchData = async () => {
     try {
-      const [modelsRes, settingsRes, templatesRes] = await Promise.all([
+      const [modelsRes, settingsRes, appSettingsRes] = await Promise.all([
         fetch('/api/config/models'),
         fetch('/api/config/settings'),
-        fetch('/settings.json')
+        fetch('/api/app/settings')
       ]);
       const modelsData = await modelsRes.json();
       const settingsData = await settingsRes.json();
-      const templatesData = await templatesRes.json();
+      const appSettings = await appSettingsRes.json();
       
       setModels(modelsData);
-      setProviderTemplates(templatesData.providerTemplates || []);
+      setProviderTemplates(appSettings.providerTemplates || []);
       setProviderConfigs(settingsData.providerConfigs || {});
     } catch (err) {
       console.error('Failed to fetch data:', err);
