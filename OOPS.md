@@ -27,6 +27,24 @@
 
 **问题**: 子进程启动方式可能不稳定，建议使用 PM2 等进程管理器
 
+### 8. ChatTest 页面流式响应不生效
+**位置**: `desktop-ui/src/pages/ChatTest.js`
+
+**问题**: 前端接收到流式数据，但展示时不是流式的，而是一次性展示
+
+**原因**: React 18 的自动批量更新 (Automatic Batching) 导致多个 setState 调用被合并，即使数据是逐个收到的，React 也会等到下一个事件周期才批量更新 UI
+
+**尝试的解决方案**:
+1. 使用 useRef 存储流式内容
+2. 使用 flushSync 强制同步更新
+3. 使用 setTimeout 延迟更新
+4. 使用 requestAnimationFrame
+5. 使用递归处理 chunk
+6. 使用 forceUpdate (setRenderKey)
+7. 直接操作 DOM
+
+**状态**: 暂未解决
+
 ---
 
 ## 修复记录

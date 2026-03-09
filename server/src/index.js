@@ -1,15 +1,54 @@
+/**
+ * Gateway Core API Server
+ * 智能模型路由后端服务
+ * 
+ * 功能:
+ * - 模型配置管理
+ * - 路由策略配置
+ * - AI智能路由
+ * - 请求日志记录
+ * 
+ * 端口: 8080 (可通过环境变量 PORT 修改)
+ */
+
 const express = require('express');
 const cors = require('cors');
 const { v4: uuidv4 } = require('uuid');
 const db = require('./db');
+const logger = require('./logger');
 
 const app = express();
-const PORT = 8080;
+const PORT = process.env.PORT || 8080;
 
+// CORS 中间件 - 允许跨域请求
 app.use(cors());
+
+// JSON 解析中间件 - 支持最大 10MB 的请求体
 app.use(express.json({ limit: '10mb' }));
 
+/**
+ * 请求日志中间件
+ * 记录每个 HTTP 请求的方法、URL、状态码和响应时间
+ */
+app.use((req, res, next) => {
+  const start = Date.now();
+  res.on('finish', () => {
+    const duration = Date.now() - start;
+    logger.info({
+      method: req.method,
+      url: req.url,
+      status: res.statusCode,
+      duration: `${duration}ms`,
+      ip: req.ip
+    }, 'HTTP Request');
+  });
+  next();
+});
+
+// 初始化数据库
 db.initDb();
+
+logger.info(`Server starting on port ${PORT}`);
 
 // ============ Models API ============
 
@@ -307,12 +346,23 @@ app.post('/api/config/settings', (req, res) => {
 
 // ============ Helper Functions ============
 
-// 简单token估算
+/**
+ * 简单token估算函数
+ * 估算公式: 字符数 / 4 (中文约等于1个字符=1个token)
+ * @param {string} text - 待估算的文本
+ * @returns {number} - 估算的token数量
+ */
 function estimateTokens(text) {
   return Math.ceil(text.length / 4);
 }
 
-// 构建候选模型上下文
+/**
+ * 构建候选模型上下文
+ * 将候选模型列表格式化为AI路由可理解的文本描述
+ * @param {Array} candidates - 候选模型列表
+ * @param {Array} models - 所有模型配置
+ * @returns {string} - 格式化的候选模型描述
+ */
 function buildCandidateContext(candidates, models) {
   return candidates.map(c => {
     const model = models.find(m => m.id === c.modelConfigId);
@@ -321,15 +371,25 @@ function buildCandidateContext(candidates, models) {
   }).join('\n');
 }
 
-// AI路由选择模型
+/**
+ * AI路由选择模型
+ * 使用大语言模型根据用户查询智能选择最合适的模型
+ * @param {Object} strategy - 路由策略配置
+ * @param {Array} candidates - 候选模型列表
+ * @param {Array} models - 所有模型配置
+ * @param {Object} settings - 系统设置
+ * @returns {Object} - { selected_model_id, reason }
+ */
 async function routeWithAI(strategy, candidates, models, settings) {
+  // 检查路由模型是否已配置
   if (!settings.routerModelApiKey || !settings.routerModelName || !settings.routerModelBaseUrl) {
     throw new Error('Router model not configured');
   }
 
   const candidateContext = buildCandidateContext(candidates, models);
   
-  const systemPrompt = strategy.promptTemplate || `你是一个智能模型路由器。根据用户查询，从候选模型中选择最合适的一个。`;
+  // 组合提示词: 选择规则 + 候选模型列表 + 输出格式
+  const systemPrompt = strategy.promptTemplate || '你是一个智能模型路由器，根据用户问题从候选模型中选择最合适的一个。';
   
   const response = await fetch(`${settings.routerModelBaseUrl}/chat/completions`, {
     method: 'POST',
@@ -341,7 +401,7 @@ async function routeWithAI(strategy, candidates, models, settings) {
       model: settings.routerModelName,
       messages: [
         { role: 'system', content: systemPrompt },
-        { role: 'user', content: `候选模型:\n${candidateContext}\n\n请根据以上候选模型信息，为用户查询选择最合适的模型，并说明理由。\n\n请以JSON格式返回，格式如下：\n{"selected_model_id": "模型ID", "reason": "选择理由"}` }
+        { role: 'user', content: `候选模型:\n${candidateContext}\n\n请根据上述候选模型信息，为用户选择最合适的模型。\n\n输出格式（必须严格遵守）：{"selected_model_id": "模型ID", "reason": "选择理由"}` }
       ],
       temperature: settings.routerModelTemperature || 0.7,
       max_tokens: 500
@@ -363,7 +423,7 @@ async function routeWithAI(strategy, candidates, models, settings) {
       return parsed;
     }
   } catch (e) {
-    console.error('Failed to parse router response:', e);
+    logger.error({ err: e }, 'Failed to parse router response');
   }
   
   // 尝试从内容中提取模型ID
@@ -387,11 +447,18 @@ async function routeWithAI(strategy, candidates, models, settings) {
   };
 }
 
-// 选择候选模型（简单策略：优先级+权重）
+/**
+ * 简单路由选择策略
+ * 根据候选模型的 priority (优先级) 和 weight (权重) 计算得分进行排序
+ * 得分公式: priority * weight
+ * 
+ * @param {Array} candidates - 候选模型列表
+ * @returns {Object|null} - 选中的候选模型
+ */
 function selectCandidateSimple(candidates) {
   if (!candidates || candidates.length === 0) return null;
   
-  // 按优先级和权重排序
+  // 按优先级和权重计算得分排序 (得分越高越优先)
   const sorted = [...candidates].sort((a, b) => {
     const priorityA = a.priority || 50;
     const priorityB = b.priority || 50;
@@ -403,12 +470,31 @@ function selectCandidateSimple(candidates) {
   return sorted[0];
 }
 
+/**
+ * Chat API - OpenAI 兼容的聊天接口
+ * 
+ * 支持功能:
+ * - AI智能路由 (routeWithAI)
+ * - 简单路由 (selectCandidateSimple)
+ * - 流式响应 (Server-Sent Events)
+ * - 请求日志记录
+ * 
+ * 请求参数:
+ * - messages: 消息数组
+ * - model: 指定模型ID (可选)
+ * - temperature: 温度参数
+ * - max_tokens: 最大token数
+ * - stream: 是否流式响应
+ * - strategyId: 指定策略ID (可选)
+ */
+
 // ============ Chat API (OpenAI Compatible) ============
 
 app.post('/v1/chat/completions', async (req, res) => {
   const data = db.getData();
   const settings = data.settings || {};
   
+  // 解析请求参数
   const {
     messages,
     model: requestedModel,
@@ -418,7 +504,7 @@ app.post('/v1/chat/completions', async (req, res) => {
     strategyId
   } = req.body;
   
-  // 确定策略
+  // 确定使用的策略 (优先级: 指定ID > 默认标记 > 第一个)
   let strategy = null;
   if (strategyId) {
     strategy = (data.strategies || []).find(s => s.id === strategyId);
@@ -461,7 +547,7 @@ app.post('/v1/chat/completions', async (req, res) => {
     selectedCandidate = candidates.find(c => c.modelConfigId === routeResult.selected_model_id);
     routeReason = routeResult.reason || 'AI路由';
   } catch (e) {
-    console.log('AI routing failed, using simple strategy:', e.message);
+    logger.warn({ err: e }, 'AI routing failed, using simple strategy');
     // 回退到简单策略
     selectedCandidate = selectCandidateSimple(candidates);
     routeReason = '简单路由（AI路由失败）';
@@ -550,12 +636,12 @@ app.post('/v1/chat/completions', async (req, res) => {
                 tokens: estimateTokens(fullContent)
               };
               
-              const logs = db.getLogs();
-              logs.push(log);
-              if (logs.length > 10000) {
-                logs = logs.slice(-10000);
-              }
-              db.setLogs(logs);
+      const logs = db.getLogs();
+      logs.push(log);
+      if (logs.length > 10000) {
+        logs.splice(0, logs.length - 10000);
+      }
+      db.setLogs(logs);
               
               const modelData = db.getData();
               const modelIndex = (modelData.models || []).findIndex(m => m.id === modelConfig.id);
@@ -832,7 +918,7 @@ app.post('/api/chat', async (req, res) => {
 // ============ System API ============
 
 app.post('/api/system/restart', (req, res) => {
-  console.log('Restart requested...');
+  logger.warn('Restart requested via API');
   res.json({ message: 'Server restarting...' });
   
   setTimeout(() => {
@@ -846,8 +932,19 @@ app.post('/api/system/restart', (req, res) => {
   }, 1000);
 });
 
+// ============ 全局异常处理 ============
+
+process.on('uncaughtException', (err) => {
+  logger.fatal({ err }, 'Uncaught exception');
+  process.exit(1);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  logger.fatal({ reason }, 'Unhandled rejection');
+});
+
 // ============ 启动服务器 ============
 
 app.listen(PORT, () => {
-  console.log(`Gateway Core API Server running on http://localhost:${PORT}`);
+  logger.info(`Server started on port ${PORT}`);
 });

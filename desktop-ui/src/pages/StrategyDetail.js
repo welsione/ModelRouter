@@ -13,6 +13,7 @@ function StrategyDetail({ strategyId, onBack }) {
   const [showCandidateForm, setShowCandidateForm] = useState(false);
   const [generatingPrompt, setGeneratingPrompt] = useState(false);
   const [settings, setSettings] = useState(null);
+  const [aiPrompts, setAiPrompts] = useState(null);
   const [candidateForm, setCandidateForm] = useState({
     modelConfigId: '',
     description: '',
@@ -30,12 +31,13 @@ function StrategyDetail({ strategyId, onBack }) {
 
   const fetchData = async () => {
     try {
-      const [strategyRes, modelsRes, candidatesRes, logsRes, settingsRes] = await Promise.all([
+      const [strategyRes, modelsRes, candidatesRes, logsRes, settingsRes, staticRes] = await Promise.all([
         fetch(`/api/config/strategies/${strategyId}`),
         fetch('/api/config/models'),
         fetch(`/api/config/strategies/${strategyId}/candidates`),
         fetch('/api/config/logs'),
-        fetch('/api/config/settings')
+        fetch('/api/config/settings'),
+        fetch('/static.json')
       ]);
       
       const strategyData = await strategyRes.json();
@@ -43,11 +45,13 @@ function StrategyDetail({ strategyId, onBack }) {
       const candidatesData = await candidatesRes.json();
       const logsData = await logsRes.json();
       const settingsData = await settingsRes.json();
+      const staticData = await staticRes.json();
       
       setStrategy(strategyData);
       setModels(modelsData);
       setCandidates(candidatesData);
       setSettings(settingsData);
+      setAiPrompts(staticData.aiPrompts);
       
       const strategyLogs = logsData.filter(l => l.strategyId === strategyId);
       setLogs(strategyLogs);
@@ -99,7 +103,8 @@ function StrategyDetail({ strategyId, onBack }) {
     setGeneratingPrompt(true);
     try {
       if (type === 'strategy') {
-        const response = await fetch(`${settings.routerModelBaseUrl}/v1/chat/completions`, {
+        // 使用元提示词生成选择规则
+        const response = await fetch(`${settings.routerModelBaseUrl}/chat/completions`, {
           method: 'POST',
           headers: { 
             'Content-Type': 'application/json',
@@ -108,7 +113,7 @@ function StrategyDetail({ strategyId, onBack }) {
           body: JSON.stringify({
             messages: [{
               role: 'user',
-              content: `请帮我生成一个高质量的路由策略提示词模板。这个模板用于帮助AI在多个模型中选择最合适的一个。请根据以下候选模型生成一个专业、清晰的提示词模板，只需要返回提示词模板内容，不要其他解释。模板应该包含对候选模型的描述和选择规则。请用中文返回。`
+              content: aiPrompts?.strategyRulePrompt || '请帮我生成路由策略的选择规则。'
             }],
             model: settings.routerModelName,
             temperature: settings.routerModelTemperature || 0.7
@@ -122,8 +127,9 @@ function StrategyDetail({ strategyId, onBack }) {
         const candidate = candidates.find(c => c.id === candidateId);
         if (!candidate) return;
         const model = models.find(m => m.id === candidate.modelConfigId);
+        const modelName = model?.name || candidate.modelConfigId;
         
-        const response = await fetch(`${settings.routerModelBaseUrl}/v1/chat/completions`, {
+        const response = await fetch(`${settings.routerModelBaseUrl}/chat/completions`, {
           method: 'POST',
           headers: { 
             'Content-Type': 'application/json',
@@ -132,7 +138,7 @@ function StrategyDetail({ strategyId, onBack }) {
           body: JSON.stringify({
             messages: [{
               role: 'user',
-              content: `请帮我为模型 "${model?.name || candidate.modelConfigId}" 生成一段简洁的描述（不超过200字），用于帮助AI路由决策时理解该模型的特点和适用场景。请用中文返回，只需要返回描述内容，不要其他解释。`
+              content: (aiPrompts?.candidateDescription || '请帮我为模型生成描述').replace('{modelName}', modelName)
             }],
             model: settings.routerModelName,
             temperature: settings.routerModelTemperature || 0.7

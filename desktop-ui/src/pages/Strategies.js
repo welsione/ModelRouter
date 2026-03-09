@@ -65,16 +65,22 @@ function Strategies({ onSelectStrategy }) {
         ? `/api/config/strategies/${editingStrategy.id}`
         : '/api/config/strategies';
       
-      await fetch(url, {
+      const response = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData)
       });
       
+      const savedStrategy = await response.json();
+      
       setShowModal(false);
       setEditingStrategy(null);
       resetFormData();
       fetchStrategies();
+      
+      if (!editingStrategy && onSelectStrategy) {
+        onSelectStrategy(savedStrategy.id);
+      }
     } catch (err) {
       console.error('Failed to save strategy:', err);
     }
@@ -87,7 +93,7 @@ function Strategies({ onSelectStrategy }) {
       routerModelId: '',
       fallbackModelId: '',
       isDefault: false,
-      enabled: true,
+      enabled: false,
       maxContextTokens: 4096,
       temperature: 0.7,
       enableStream: true,
@@ -254,125 +260,32 @@ function Strategies({ onSelectStrategy }) {
               {editingStrategy ? '编辑策略' : '添加策略'}
             </h3>
             <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">策略名称</label>
-                  <input
-                    type="text"
-                    value={formData.name}
-                    onChange={e => setFormData({...formData, name: e.target.value})}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-800 dark:text-white"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">最大上下文 Token</label>
-                  <input
-                    type="number"
-                    value={formData.maxContextTokens}
-                    onChange={e => setFormData({...formData, maxContextTokens: parseInt(e.target.value)})}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-800 dark:text-white"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">路由模型</label>
-                  <select
-                    value={formData.routerModelId}
-                    onChange={e => setFormData({...formData, routerModelId: e.target.value})}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-800 dark:text-white"
-                    required
-                  >
-                    <option value="">选择模型</option>
-                    {models.map(m => (
-                      <option key={m.id} value={m.id}>{m.name}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">备用模型</label>
-                  <select
-                    value={formData.fallbackModelId}
-                    onChange={e => setFormData({...formData, fallbackModelId: e.target.value})}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-800 dark:text-white"
-                    required
-                  >
-                    <option value="">选择模型</option>
-                    {models.map(m => (
-                      <option key={m.id} value={m.id}>{m.name}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-3 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">温度参数</label>
-                  <input
-                    type="number"
-                    step="0.1"
-                    min="0"
-                    max="2"
-                    value={formData.temperature}
-                    onChange={e => setFormData({...formData, temperature: parseFloat(e.target.value)})}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-800 dark:text-white"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">超时(秒)</label>
-                  <input
-                    type="number"
-                    value={formData.timeoutSeconds}
-                    onChange={e => setFormData({...formData, timeoutSeconds: parseInt(e.target.value)})}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-800 dark:text-white"
-                  />
-                </div>
-                <div className="flex items-center gap-2 pt-6">
-                  <input
-                    type="checkbox"
-                    id="enableStream"
-                    checked={formData.enableStream}
-                    onChange={e => setFormData({...formData, enableStream: e.target.checked})}
-                    className="w-4 h-4"
-                  />
-                  <label htmlFor="enableStream" className="text-sm text-gray-700 dark:text-gray-300">启用流式响应</label>
-                </div>
-              </div>
-
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">提示模板</label>
-                <textarea
-                  value={formData.promptTemplate}
-                  onChange={e => setFormData({...formData, promptTemplate: e.target.value})}
-                  rows={4}
-                  placeholder="可选的自定义提示词模板..."
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-800 dark:text-white"
-                />
-              </div>
-
-              <div className="flex items-center gap-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">策略名称 *</label>
                 <input
-                  type="checkbox"
-                  id="isDefault"
-                  checked={formData.isDefault}
-                  onChange={e => setFormData({...formData, isDefault: e.target.checked})}
-                  className="w-4 h-4"
+                  type="text"
+                  value={formData.name}
+                  onChange={e => setFormData({...formData, name: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-800 dark:text-white"
+                  required
+                  placeholder="输入策略名称"
                 />
-                <label htmlFor="isDefault" className="text-sm text-gray-700 dark:text-gray-300">设为默认策略</label>
               </div>
 
               <div className="flex items-center gap-2">
                 <input
                   type="checkbox"
                   id="enabled"
-                  checked={formData.enabled !== false}
+                  checked={formData.enabled}
                   onChange={e => setFormData({...formData, enabled: e.target.checked})}
                   className="w-4 h-4"
                 />
                 <label htmlFor="enabled" className="text-sm text-gray-700 dark:text-gray-300">启用策略</label>
               </div>
+
+              <p className="text-xs text-gray-500">
+                其他配置可在策略详情中设置
+              </p>
 
               <div className="flex gap-3 pt-4">
                 <button
@@ -386,7 +299,7 @@ function Strategies({ onSelectStrategy }) {
                   type="submit"
                   className="flex-1 px-4 py-2 bg-primary text-white rounded-lg hover:bg-blue-700"
                 >
-                  保存
+                  {editingStrategy ? '保存' : '创建并编辑'}
                 </button>
               </div>
             </form>

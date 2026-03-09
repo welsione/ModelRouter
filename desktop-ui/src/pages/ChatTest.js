@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Send, Trash2, RefreshCw, Copy, Check, MessageCircle } from 'lucide-react';
+import { Send, Trash2, RefreshCw, Copy, Check } from 'lucide-react';
 
 function ChatTest() {
   const [messages, setMessages] = useState([
@@ -9,6 +9,7 @@ function ChatTest() {
   const [loading, setLoading] = useState(false);
   const [copiedId, setCopiedId] = useState(null);
   const messagesEndRef = useRef(null);
+  const [renderKey, setRenderKey] = useState(0);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -18,21 +19,20 @@ function ChatTest() {
     scrollToBottom();
   }, [messages]);
 
-  const sendMessage = async () => {
+  const sendMessage = async (e) => {
     if (!input.trim() || loading) return;
-
+    e.preventDefault();
+    
     const userMessage = input.trim();
     setInput('');
     
     setMessages(prev => [...prev, { role: 'user', content: userMessage }]);
-    setLoading(true);
 
     try {
       const response = await fetch('/v1/chat/completions', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Accept': 'text/event-stream'
         },
         body: JSON.stringify({
           messages: messages.filter(m => m.role !== 'assistant' || m.content).map(m => ({
@@ -51,16 +51,15 @@ function ChatTest() {
           model: null,
           reason: null
         }]);
-        setLoading(false);
         return;
       }
 
       const reader = response.body.getReader();
       const decoder = new TextDecoder('utf-8');
-      let assistantContent = '';
+      let buffer = '';
+      let fullContent = '';
       let currentModel = null;
       let currentReason = null;
-      let buffer = '';
 
       setMessages(prev => [...prev, { role: 'assistant', content: '', model: null, reason: null }]);
 
@@ -86,7 +85,9 @@ function ChatTest() {
           if (dataLines.length === 0) continue;
           const dataStr = dataLines.join('\n').trim();
 
-          if (dataStr === '[DONE]' || dataStr === '"[DONE]"') continue;
+          if (dataStr === '[DONE]' || dataStr === '"[DONE]"') {
+            return;
+          }
 
           try {
             const data = JSON.parse(dataStr);
@@ -100,24 +101,28 @@ function ChatTest() {
             }
 
             if (data.choices && data.choices[0] && data.choices[0].delta && data.choices[0].delta.content) {
-              assistantContent += data.choices[0].delta.content;
+              fullContent += data.choices[0].delta.content;
+              
               setMessages(prev => {
-                const newMessages = [...prev];
-                const lastMsg = newMessages[newMessages.length - 1];
-                if (lastMsg.role === 'assistant') {
-                  lastMsg.content = assistantContent;
-                  lastMsg.model = currentModel;
-                  lastMsg.reason = currentReason;
+                const newMsgs = [...prev];
+                const lastMsg = newMsgs[newMsgs.length - 1];
+                if (lastMsg && lastMsg.role === 'assistant') {
+                  return [
+                    ...newMsgs.slice(0, -1),
+                    { ...lastMsg, content: fullContent, model: currentModel, reason: currentReason }
+                  ];
                 }
-                return newMessages;
+                return newMsgs;
               });
+              
+              // Force update to show streaming
+              setRenderKey(k => k + 1);
             }
           } catch (e) {
-            // Ignore parse errors for incomplete chunks
+            // Ignore parse errors
           }
         }
       }
-
     } catch (error) {
       setMessages(prev => [...prev, { 
         role: 'system', 
@@ -125,8 +130,6 @@ function ChatTest() {
         model: null,
         reason: null
       }]);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -164,7 +167,7 @@ function ChatTest() {
         </button>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50 dark:bg-gray-900">
+      <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50 dark:bg-gray-900" key={renderKey}>
         {messages.map((msg, idx) => (
           <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
             <div className={`max-w-[80%] rounded-lg p-3 ${
@@ -221,14 +224,14 @@ function ChatTest() {
       </div>
 
       <div className="p-4 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
-        <div className="flex gap-2">
+        <form onSubmit={sendMessage} className="flex gap-2">
           <textarea
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
-                sendMessage();
+                sendMessage(e);
               }
             }}
             placeholder="请输入消息... (回车发送，Shift+Enter 换行)"
@@ -237,13 +240,13 @@ function ChatTest() {
             disabled={loading}
           />
           <button
-            onClick={sendMessage}
+            type="submit"
             disabled={loading || !input.trim()}
             className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Send size={20} />
           </button>
-        </div>
+        </form>
       </div>
     </div>
   );
