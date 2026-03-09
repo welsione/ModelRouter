@@ -44,7 +44,7 @@ function SettingsPage() {
       const [settingsRes, modelsRes, appSettingsRes] = await Promise.all([
         fetch('/api/config/settings'),
         fetch('/api/config/models'),
-        fetch('/api/app/settings')
+        fetch('/static.json')
       ]);
       const settingsData = await settingsRes.json();
       const modelsData = await modelsRes.json();

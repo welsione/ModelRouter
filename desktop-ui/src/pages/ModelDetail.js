@@ -28,7 +28,7 @@ function ModelDetail({ modelId, onBack }) {
         fetch(`/api/config/models/${modelId}/stats`),
         fetch('/api/config/strategies'),
         fetch('/api/config/settings'),
-        fetch('/api/app/settings')
+        fetch('/static.json')
       ]);
       
       if (!statsRes.ok) {

@@ -30,7 +30,7 @@ function Models({ onSelectModel }) {
       const [modelsRes, settingsRes, appSettingsRes] = await Promise.all([
         fetch('/api/config/models'),
         fetch('/api/config/settings'),
-        fetch('/api/app/settings')
+        fetch('/static.json')
       ]);
       const modelsData = await modelsRes.json();
       const settingsData = await settingsRes.json();
