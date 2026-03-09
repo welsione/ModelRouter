@@ -181,19 +181,9 @@ function ModelDetail({ modelId, onBack }) {
   const getProviderIcon = (providerId) => {
     const provider = providerTemplates.find(p => p.id === providerId);
     if (provider?.icon) {
-      return <img src={provider.icon} alt={provider.name} className="w-5 h-5 object-contain" />;
+      return <img src={provider.icon} alt={provider.name} className="w-8 h-8 object-contain" />;
     }
-    return <Globe className="w-5 h-5 text-gray-500" />;
-  };
-
-  const getProviderName = (providerId) => {
-    const provider = providerTemplates.find(p => p.id === providerId);
-    return provider?.name || providerId;
-  };
-
-  const getStrategyName = (strategyId) => {
-    const strategy = strategies.find(s => s.id === strategyId);
-    return strategy ? strategy.name : strategyId;
+    return <Zap className="text-blue-600 dark:text-blue-400" size={28} />;
   };
 
   const getTypeColor = (type) => {
@@ -240,13 +230,13 @@ function ModelDetail({ modelId, onBack }) {
 
       <div className="flex items-start justify-between mb-6">
         <div className="flex items-center gap-4">
-          <div className="w-14 h-14 bg-blue-100 dark:bg-blue-900 rounded-xl flex items-center justify-center">
-            <Zap className="text-blue-600 dark:text-blue-400" size={28} />
+          <div className="w-14 h-14 bg-gray-100 dark:bg-gray-700 rounded-xl flex items-center justify-center">
+            {getProviderIcon(model?.type)}
           </div>
           <div>
             <h2 className="text-2xl font-bold text-gray-800 dark:text-white">{model?.name}</h2>
             <span className={`text-xs px-2 py-0.5 rounded ${getTypeColor(model?.type)}`}>
-              {model?.type}
+              {providerTemplates.find(p => p.id === model?.type)?.name || model?.type}
             </span>
           </div>
         </div>

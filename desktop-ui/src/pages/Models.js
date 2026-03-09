@@ -187,9 +187,9 @@ function Models({ onSelectModel }) {
   const getProviderIcon = (providerId) => {
     const provider = providerTemplates.find(p => p.id === providerId);
     if (provider?.icon) {
-      return <img src={provider.icon} alt={provider.name} className="w-6 h-6 object-contain" />;
+      return <img src={provider.icon} alt={provider.name} className="w-8 h-8 object-contain" />;
     }
-    return <Globe className="w-6 h-6 text-gray-500" />;
+    return <Globe className="w-8 h-8 text-gray-500" />;
   };
 
   const getTypeColor = (type) => {
@@ -246,7 +246,7 @@ function Models({ onSelectModel }) {
           >
             <div className="flex items-start justify-between">
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 dark:from-blue-600 dark:to-blue-700 rounded-xl flex items-center justify-center shadow-sm">
+                <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-gray-100 dark:bg-gray-700">
                   {getProviderIcon(model.type)}
                 </div>
                 <div>
