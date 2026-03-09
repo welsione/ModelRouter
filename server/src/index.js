@@ -357,6 +357,28 @@ app.get('/api/config/logs', (req, res) => {
   res.json(logs);
 });
 
+// ============ App Settings API (static) ============
+
+const SETTINGS_FILE = path.join(DATA_DIR, 'settings.json');
+
+function readSettings() {
+  try {
+    if (!fs.existsSync(SETTINGS_FILE)) {
+      return { providerTemplates: [], defaults: {} };
+    }
+    const data = fs.readFileSync(SETTINGS_FILE, 'utf-8');
+    return JSON.parse(data);
+  } catch (err) {
+    console.error('Error reading settings:', err);
+    return { providerTemplates: [], defaults: {} };
+  }
+}
+
+app.get('/api/app/settings', (req, res) => {
+  const settings = readSettings();
+  res.json(settings);
+});
+
 // ============ Settings API ============
 
 app.get('/api/config/settings', (req, res) => {

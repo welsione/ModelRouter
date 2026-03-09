@@ -1,0 +1,29 @@
+[
+  {
+    "id": "3de71882-8e54-4a64-90cd-347df24631e4",
+    "selectedModelId": "39fed166-9ee1-4558-9c3e-97e4805e9a1b",
+    "userPrompt": "你好",
+    "systemPrompt": "",
+    "createTime": "2026-03-09T12:43:54.687Z",
+    "latency": 85732,
+    "tokens": 644
+  },
+  {
+    "id": "b0d21732-e299-4490-b641-ddf9e6780758",
+    "selectedModelId": "39fed166-9ee1-4558-9c3e-97e4805e9a1b",
+    "userPrompt": "你好",
+    "systemPrompt": "",
+    "createTime": "2026-03-09T13:17:26.028Z",
+    "latency": 64663,
+    "tokens": 595
+  },
+  {
+    "id": "59058f3b-d4bf-4abc-8aca-fe609a487329",
+    "selectedModelId": "39fed166-9ee1-4558-9c3e-97e4805e9a1b",
+    "userPrompt": "你是谁",
+    "systemPrompt": "",
+    "createTime": "2026-03-09T13:36:47.762Z",
+    "latency": 152354,
+    "tokens": 1467
+  }
+]

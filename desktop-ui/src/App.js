@@ -17,7 +17,7 @@ function App() {
   const [appConfig, setAppConfig] = useState({ name: 'ModelRouter', description: 'Smart Model Router' });
 
   useEffect(() => {
-    fetch('/settings.json')
+    fetch('/api/app/settings')
       .then(res => res.json())
       .then(data => {
         if (data.defaults) {
