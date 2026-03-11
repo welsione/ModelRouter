@@ -181,12 +181,59 @@ app.get('/api/config/models/:id/stats', (req, res) => {
   const byStrategy = {};
   let totalTokensFromLogs = 0;
   let totalLatency = 0;
-  modelLogs.forEach(log => {
+  
+  const latencyHistory = [];
+  const tokenHistory = [];
+  
+  modelLogs.forEach((log, index) => {
     const strategyId = log.strategyId || 'unknown';
     byStrategy[strategyId] = (byStrategy[strategyId] || 0) + 1;
     totalTokensFromLogs += log.tokens || 0;
     totalLatency += log.latency || 0;
+    
+    latencyHistory.push({
+      index: index + 1,
+      latency: log.latency || 0,
+      time: log.createTime
+    });
+    
+    tokenHistory.push({
+      index: index + 1,
+      tokens: log.tokens || 0,
+      time: log.createTime
+    });
   });
+  
+  const hourlyLatency = {};
+  const hourlyTokens = {};
+  
+  modelLogs.forEach(log => {
+    const hour = new Date(log.createTime).getHours();
+    const date = new Date(log.createTime).toLocaleDateString();
+    const key = `${date} ${hour}:00`;
+    
+    if (!hourlyLatency[key]) {
+      hourlyLatency[key] = { sum: 0, count: 0 };
+    }
+    hourlyLatency[key].sum += log.latency || 0;
+    hourlyLatency[key].count += 1;
+    
+    if (!hourlyTokens[key]) {
+      hourlyTokens[key] = { sum: 0 };
+    }
+    hourlyTokens[key].sum += log.tokens || 0;
+  });
+  
+  const hourlyLatencyData = Object.entries(hourlyLatency).map(([key, val]) => ({
+    time: key,
+    avgLatency: Math.round(val.sum / val.count),
+    count: val.count
+  })).sort((a, b) => a.time.localeCompare(b.time));
+  
+  const hourlyTokenData = Object.entries(hourlyTokens).map(([key, val]) => ({
+    time: key,
+    tokens: val.sum
+  })).sort((a, b) => a.time.localeCompare(b.time));
   
   res.json({
     config: model,
@@ -195,7 +242,10 @@ app.get('/api/config/models/:id/stats', (req, res) => {
     totalRequests: modelLogs.length,
     avgLatency: modelLogs.length > 0 ? Math.round(totalLatency / modelLogs.length) : 0,
     byStrategy,
-    recentLogs: modelLogs.slice(0, 50)
+    recentLogs: modelLogs.slice(0, 50),
+    latencyHistory: latencyHistory.slice(-20),
+    hourlyLatency: hourlyLatencyData.slice(-24),
+    hourlyTokens: hourlyTokenData.slice(-24)
   });
 });
 
@@ -390,6 +440,7 @@ async function routeWithAI(strategy, candidates, models, settings) {
   
   // 组合提示词: 选择规则 + 候选模型列表 + 输出格式
   const systemPrompt = strategy.promptTemplate || '你是一个智能模型路由器，根据用户问题从候选模型中选择最合适的一个。';
+  const fullPrompt = `系统提示:\n${systemPrompt}\n\n候选模型:\n${candidateContext}\n\n用户请求:\n请根据上述候选模型信息，为用户选择最合适的模型。\n\n输出格式（必须严格遵守）：{"selected_model_id": "模型ID", "reason": "选择理由"}`;
   
   const response = await fetch(`${settings.routerModelBaseUrl}/chat/completions`, {
     method: 'POST',
@@ -420,7 +471,7 @@ async function routeWithAI(strategy, candidates, models, settings) {
     const jsonMatch = content.match(/\{[\s\S]*\}/);
     if (jsonMatch) {
       const parsed = JSON.parse(jsonMatch[0]);
-      return parsed;
+      return { ...parsed, _fullPrompt: fullPrompt, _rawResponse: content };
     }
   } catch (e) {
     logger.error({ err: e }, 'Failed to parse router response');
@@ -434,7 +485,7 @@ async function routeWithAI(strategy, candidates, models, settings) {
       if (idMatch) {
         const modelId = idMatch[1];
         if (candidates.find(c => c.modelConfigId === modelId)) {
-          return { selected_model_id: modelId, reason: '从响应中提取' };
+          return { selected_model_id: modelId, reason: '从响应中提取', _fullPrompt: fullPrompt, _rawResponse: content };
         }
       }
     }
@@ -443,7 +494,9 @@ async function routeWithAI(strategy, candidates, models, settings) {
   // 默认返回第一个候选
   return { 
     selected_model_id: candidates[0]?.modelConfigId, 
-    reason: '默认选择第一个候选模型' 
+    reason: '默认选择第一个候选模型',
+    _fullPrompt: fullPrompt,
+    _rawResponse: content
   };
 }
 
@@ -539,13 +592,16 @@ app.post('/v1/chat/completions', async (req, res) => {
   // 路由选择模型
   let selectedCandidate = null;
   let routeReason = '';
+  let routeFullPrompt = '';
+  let routeResult = null;
   
   try {
     // 尝试AI路由
     const models = data.models || [];
-    const routeResult = await routeWithAI(strategy, candidates, models, settings);
+    routeResult = await routeWithAI(strategy, candidates, models, settings);
     selectedCandidate = candidates.find(c => c.modelConfigId === routeResult.selected_model_id);
     routeReason = routeResult.reason || 'AI路由';
+    routeFullPrompt = routeResult._fullPrompt || '';
   } catch (e) {
     logger.warn({ err: e }, 'AI routing failed, using simple strategy');
     // 回退到简单策略
@@ -631,8 +687,9 @@ app.post('/v1/chat/completions', async (req, res) => {
                 selectedModelId: modelConfig.id,
                 selectedModelName: modelConfig.name,
                 routeReason: routeReason,
+                routerResponse: routeResult?._rawResponse || '',
                 userPrompt: messages[messages.length - 1]?.content || '',
-                systemPrompt: strategy?.promptTemplate || '',
+                systemPrompt: routeFullPrompt || strategy?.promptTemplate || '',
                 createTime: new Date().toISOString(),
                 latency,
                 tokens: estimateTokens(fullContent)
@@ -644,11 +701,14 @@ app.post('/v1/chat/completions', async (req, res) => {
         logs.splice(0, logs.length - 10000);
       }
       db.setLogs(logs);
+      
+      const estimatedTokens = estimateTokens(fullContent);
               
-              const modelData = db.getData();
+      const modelData = db.getData();
               const modelIndex = (modelData.models || []).findIndex(m => m.id === modelConfig.id);
               if (modelIndex !== -1) {
                 modelData.models[modelIndex].requestCount = (modelData.models[modelIndex].requestCount || 0) + 1;
+                modelData.models[modelIndex].totalTokens = (modelData.models[modelIndex].totalTokens || 0) + estimatedTokens;
                 modelData.models[modelIndex].lastLatency = latency;
                 const totalLatency = (modelData.models[modelIndex].totalLatency || 0) + latency;
                 modelData.models[modelIndex].totalLatency = totalLatency;
@@ -663,11 +723,17 @@ app.post('/v1/chat/completions', async (req, res) => {
                 created: Math.floor(Date.now() / 1000),
                 model: modelConfig.models,
                 choices: [{ index: 0, delta: {}, finish_reason: 'stop' }],
+                usage: {
+                  prompt_tokens: estimateTokens(messages.map(m => m.content).join('')),
+                  completion_tokens: estimatedTokens,
+                  total_tokens: estimatedTokens
+                },
                 routing: {
                   strategyId: strategy?.id,
+                  strategyName: strategy?.name,
                   selectedModelId: modelConfig.id,
                   selectedModelName: modelConfig.name,
-                  reason: '流式响应'
+                  reason: routeReason
                 }
               })}\n\n`);
               res.end();
@@ -696,9 +762,10 @@ app.post('/v1/chat/completions', async (req, res) => {
                   }],
                   routing: {
                     strategyId: strategy?.id,
+                    strategyName: strategy?.name,
                     selectedModelId: modelConfig.id,
                     selectedModelName: modelConfig.name,
-                    reason: '流式响应'
+                    reason: routeReason
                   }
                 })}\n\n`);
                 firstChunk = false;
@@ -761,8 +828,9 @@ app.post('/v1/chat/completions', async (req, res) => {
         selectedModelId: modelConfig.id,
         selectedModelName: modelConfig.name,
         routeReason: routeReason,
+        routerResponse: routeResult?._rawResponse || '',
         userPrompt: messages[messages.length - 1]?.content || '',
-        systemPrompt: strategy?.promptTemplate || '',
+        systemPrompt: routeFullPrompt || strategy?.promptTemplate || '',
         createTime: new Date().toISOString(),
         latency,
         tokens: usage.total_tokens || estimateTokens(reply)
@@ -771,7 +839,7 @@ app.post('/v1/chat/completions', async (req, res) => {
       const logs = db.getLogs();
       logs.push(log);
       if (logs.length > 10000) {
-        logs.slice(-10000);
+        logs.splice(0, logs.length - 10000);
       }
       db.setLogs(logs);
       
@@ -891,7 +959,7 @@ app.post('/api/chat', async (req, res) => {
       const logs = db.getLogs();
       logs.push(log);
       if (logs.length > 10000) {
-        logs.slice(-10000);
+        logs.splice(0, logs.length - 10000);
       }
       db.setLogs(logs);
       

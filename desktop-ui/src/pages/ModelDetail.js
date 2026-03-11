@@ -492,37 +492,33 @@ function ModelDetail({ modelId, onBack }) {
         <div className="space-y-6">
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-5">
             <h3 className="font-semibold text-gray-800 dark:text-white mb-4">请求量与Token趋势</h3>
-            {stats?.totalRequests > 0 ? (
+            {stats?.hourlyLatency && stats.hourlyLatency.length > 0 ? (
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <div className="h-48">
-                  <p className="text-sm text-gray-500 mb-2">请求次数</p>
+                  <p className="text-sm text-gray-500 mb-2">每小时请求次数</p>
                   <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={[
-                      { name: '请求次数', value: stats.requestCount || 0 }
-                    ]}>
-                      <XAxis dataKey="name" tick={{fill: '#9ca3af'}} />
+                    <LineChart data={stats.hourlyLatency}>
+                      <XAxis dataKey="time" tick={{fill: '#9ca3af', fontSize: 10}} />
                       <YAxis tick={{fill: '#9ca3af'}} />
                       <Tooltip 
                         contentStyle={{backgroundColor: '#1f2937', border: 'none', borderRadius: '8px'}}
                         labelStyle={{color: '#fff'}}
                       />
-                      <Line type="monotone" dataKey="value" stroke="#22c55e" strokeWidth={2} dot={{fill: '#22c55e'}} />
+                      <Line type="monotone" dataKey="count" name="请求次数" stroke="#22c55e" strokeWidth={2} dot={{fill: '#22c55e'}} />
                     </LineChart>
                   </ResponsiveContainer>
                 </div>
                 <div className="h-48">
-                  <p className="text-sm text-gray-500 mb-2">Token用量</p>
+                  <p className="text-sm text-gray-500 mb-2">每小时Token用量</p>
                   <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={[
-                      { name: 'Token用量', value: stats.totalTokens || 0 }
-                    ]}>
-                      <XAxis dataKey="name" tick={{fill: '#9ca3af'}} />
+                    <LineChart data={stats.hourlyTokens}>
+                      <XAxis dataKey="time" tick={{fill: '#9ca3af', fontSize: 10}} />
                       <YAxis tick={{fill: '#9ca3af'}} />
                       <Tooltip 
                         contentStyle={{backgroundColor: '#1f2937', border: 'none', borderRadius: '8px'}}
                         labelStyle={{color: '#fff'}}
                       />
-                      <Line type="monotone" dataKey="value" stroke="#a855f7" strokeWidth={2} dot={{fill: '#a855f7'}} />
+                      <Line type="monotone" dataKey="tokens" name="Tokens" stroke="#a855f7" strokeWidth={2} dot={{fill: '#a855f7'}} />
                     </LineChart>
                   </ResponsiveContainer>
                 </div>
@@ -533,30 +529,36 @@ function ModelDetail({ modelId, onBack }) {
           </div>
 
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-5">
-            <h3 className="font-semibold text-gray-800 dark:text-white mb-4">延迟统计</h3>
-            {model?.lastLatency ? (
-              <div className="h-48">
+            <h3 className="font-semibold text-gray-800 dark:text-white mb-4">延迟趋势</h3>
+            {stats?.latencyHistory && stats.latencyHistory.length > 1 ? (
+              <div className="h-64">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={[
-                    { name: '上次延迟', value: model.lastLatency, color: model.lastLatency < 1000 ? '#22c55e' : model.lastLatency < 3000 ? '#eab308' : '#ef4444' },
-                    { name: '平均延迟', value: Math.round(model.avgLatency || 0), color: '#3b82f6' }
-                  ]}>
-                    <XAxis dataKey="name" tick={{fill: '#9ca3af'}} />
-                    <YAxis tick={{fill: '#9ca3af'}} />
+                  <LineChart data={stats.latencyHistory}>
+                    <XAxis dataKey="index" tick={{fill: '#9ca3af'}} />
+                    <YAxis tick={{fill: '#9ca3af'}} domain={[0, 'auto']} />
                     <Tooltip 
                       contentStyle={{backgroundColor: '#1f2937', border: 'none', borderRadius: '8px'}}
                       labelStyle={{color: '#fff'}}
+                      formatter={(value) => [`${value}ms`, '延迟']}
                     />
-                    <Bar dataKey="value" radius={[4, 4, 0, 0]}>
-                      {[
-                        { name: '上次延迟', value: model.lastLatency, color: model.lastLatency < 1000 ? '#22c55e' : model.lastLatency < 3000 ? '#eab308' : '#ef4444' },
-                        { name: '平均延迟', value: Math.round(model.avgLatency || 0), color: '#3b82f6' }
-                      ].map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Bar>
-                  </BarChart>
+                    <Line 
+                      type="monotone" 
+                      dataKey="latency" 
+                      stroke="#3b82f6" 
+                      strokeWidth={2} 
+                      dot={{fill: '#3b82f6', r: 3}} 
+                      name="延迟(ms)"
+                    />
+                  </LineChart>
                 </ResponsiveContainer>
+                <p className="text-xs text-gray-500 mt-2 text-center">请求序号</p>
+              </div>
+            ) : stats?.latencyHistory && stats.latencyHistory.length === 1 ? (
+              <div className="h-48 flex items-center justify-center">
+                <div className="text-center">
+                  <p className="text-2xl font-bold text-gray-800 dark:text-white">{stats.latencyHistory[0].latency}ms</p>
+                  <p className="text-sm text-gray-500">当前延迟</p>
+                </div>
               </div>
             ) : (
               <p className="text-gray-500 text-sm">暂无延迟数据，请进行测试</p>

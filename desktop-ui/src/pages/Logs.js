@@ -154,7 +154,7 @@ function Logs() {
                     {getModelName(log.selectedModelId)}
                   </td>
                   <td className="py-3 px-4 text-sm text-gray-700 dark:text-gray-300 truncate max-w-[200px]">
-                    {log.reason || '-'}
+                    {log.routeReason || log.reason || '-'}
                   </td>
                   <td className="py-3 px-4 text-sm text-gray-700 dark:text-gray-300 truncate max-w-[300px]">
                     {log.userPrompt || '-'}
@@ -251,7 +251,7 @@ function Logs() {
                 </div>
                 <div className="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
                   <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">路由原因</p>
-                  <p className="text-sm text-gray-800 dark:text-gray-200">{selectedLog.reason || '-'}</p>
+                  <p className="text-sm text-gray-800 dark:text-gray-200">{selectedLog.routeReason || '-'}</p>
                 </div>
               </div>
 
